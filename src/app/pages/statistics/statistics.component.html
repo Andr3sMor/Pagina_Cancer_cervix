@@ -1,0 +1,163 @@
+<div class="stats-page fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Estadísticas</h1>
+      <p class="page-sub">Métricas de evaluación y rendimiento del modelo</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div class="header-controls">
+        <label class="control-label">Modelo</label>
+        <select class="form-select" [(ngModel)]="selectedModelId" (change)="onModelChange()">
+          <option *ngFor="let m of models" [value]="m.id">{{ m.name }}</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" (click)="toggleCompare()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10M12 20V4M6 20v-6"/>
+        </svg>
+        Comparación de Modelos
+      </button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="selectedModel">
+
+    <!-- Model info card -->
+    <div class="model-info-card card">
+      <div class="model-badge">
+        <div class="model-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="model-name">{{ selectedModel.name }}</h2>
+          <p class="model-desc">{{ selectedModel.description }}</p>
+        </div>
+      </div>
+      <div class="train-stats">
+        <div *ngFor="let tm of TRAIN_METRICS" class="train-stat">
+          <span class="train-val">{{ getTrainValue(tm.key) }}</span>
+          <span class="train-label">{{ tm.label }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics grid -->
+    <div class="metrics-grid">
+      <div *ngFor="let m of METRICS; let i = index" class="metric-card card"
+           [style.animation-delay]="(i * 0.06) + 's'">
+        <div class="metric-header">
+          <div class="metric-icon" [style.color]="m.color">{{ m.icon }}</div>
+          <div class="metric-label">{{ m.label }}</div>
+        </div>
+        <div class="metric-value" [style.color]="m.color">
+          {{ toPercent(getMetricValue(m.key)) }}
+        </div>
+        <div class="metric-bar-bg">
+          <div class="metric-bar"
+               [style.width]="barWidth(getMetricValue(m.key))"
+               [style.background]="m.color"></div>
+        </div>
+        <div class="metric-desc">{{ m.description }}</div>
+      </div>
+    </div>
+
+    <!-- Training summary -->
+    <div class="chart-section card">
+      <p class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Resumen de Entrenamiento
+      </p>
+      <div class="loss-summary">
+        <div class="loss-item">
+          <div class="loss-dot" style="background:var(--accent)"></div>
+          <div>
+            <span class="loss-label">Train Loss final</span>
+            <span class="loss-value">{{ getTrainValue('trainLoss') }}</span>
+          </div>
+        </div>
+        <div class="loss-item">
+          <div class="loss-dot" style="background:var(--accent-2)"></div>
+          <div>
+            <span class="loss-label">Validation Loss final</span>
+            <span class="loss-value">{{ getTrainValue('valLoss') }}</span>
+          </div>
+        </div>
+        <div class="loss-item">
+          <div class="loss-dot" style="background:var(--success)"></div>
+          <div>
+            <span class="loss-label">Épocas entrenadas</span>
+            <span class="loss-value">{{ getTrainValue('trainEpochs') }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="loss-bars">
+        <div class="loss-bar-row">
+          <span class="loss-bar-label">Train Loss</span>
+          <div class="loss-bar-bg">
+            <div class="loss-bar-fill" style="width:18.23%;background:var(--accent)"></div>
+          </div>
+          <span class="loss-bar-val">{{ getTrainValue('trainLoss') }}</span>
+        </div>
+        <div class="loss-bar-row">
+          <span class="loss-bar-label">Val Loss</span>
+          <div class="loss-bar-bg">
+            <div class="loss-bar-fill" style="width:21.04%;background:var(--accent-2)"></div>
+          </div>
+          <span class="loss-bar-val">{{ getTrainValue('valLoss') }}</span>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+</div>
+
+<!-- Compare Modal -->
+<div class="modal-backdrop" *ngIf="showCompareModal" (click)="toggleCompare()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">Comparación de Modelos</h3>
+      <button class="btn btn-ghost" style="padding:6px 12px" (click)="toggleCompare()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        Cerrar
+      </button>
+    </div>
+    <div class="modal-body">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th *ngFor="let m of models">{{ m.name }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let metric of METRICS">
+            <td class="metric-name-cell">
+              <span [style.color]="metric.color">{{ metric.icon }}</span>
+              {{ metric.label }}
+            </td>
+            <td *ngFor="let m of models" class="metric-val-cell">
+              {{ toPercent(getStatNum(m, metric.key)) }}
+            </td>
+          </tr>
+          <tr *ngFor="let tm of TRAIN_METRICS">
+            <td class="metric-name-cell">{{ tm.label }}</td>
+            <td *ngFor="let m of models" class="metric-val-cell">
+              {{ getStatStr(m, tm.key) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="compare-note" *ngIf="models.length === 1">
+        Solo hay 1 modelo disponible actualmente. Próximamente se añadirán más modelos para comparar.
+      </p>
+    </div>
+  </div>
+</div>

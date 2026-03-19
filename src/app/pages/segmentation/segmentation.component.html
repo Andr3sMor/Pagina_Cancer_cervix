@@ -1,0 +1,193 @@
+<div class="seg-page fade-in">
+
+  <!-- TOP BAR -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Segmentación</h1>
+      <p class="page-sub">Carga una imagen y visualiza la segmentación del modelo</p>
+    </div>
+    <div class="header-controls">
+      <label class="control-label">Modelo</label>
+      <select class="form-select" [(ngModel)]="selectedModelId" (change)="onModelChange()">
+        <option *ngFor="let m of models" [value]="m.id">{{ m.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: Upload + History -->
+    <aside class="left-panel">
+
+      <!-- Upload zone -->
+      <div class="upload-zone"
+           [class.dragging]="isDragging"
+           [class.loading]="isLoading"
+           (click)="triggerFileInput()"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave()"
+           (drop)="onDrop($event)">
+        <input #fileInput type="file" accept="image/jpeg,image/png,image/bmp,image/webp,image/tiff"
+               style="display:none" (change)="onFileSelected($event)"/>
+        <div *ngIf="!isLoading" class="upload-content">
+          <div class="upload-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="upload-title">Arrastra o haz clic</p>
+          <p class="upload-hint">JPG · PNG · BMP · WEBP · TIFF</p>
+        </div>
+        <div *ngIf="isLoading" class="upload-loading">
+          <div class="spinner"></div>
+          <p>Procesando imagen...</p>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="history-panel" *ngIf="records.length > 0">
+        <div class="history-header">
+          <span class="card-title" style="margin:0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Historial ({{ records.length }})
+          </span>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.75rem" (click)="clearHistory()">Limpiar</button>
+        </div>
+        <div class="history-list">
+          <div *ngFor="let r of records" class="history-item"
+               [class.active]="activeRecord?.id === r.id"
+               (click)="selectRecord(r)">
+            <img [src]="r.originalUrl" alt="" class="history-thumb"/>
+            <div class="history-info">
+              <span class="history-name">{{ r.fileName }}</span>
+              <div class="history-meta">
+                <span class="badge"
+                  [ngClass]="{
+                    'badge-success': r.status === 'done',
+                    'badge-processing': r.status === 'processing',
+                    'badge-error': r.status === 'error'
+                  }">{{ r.status }}</span>
+                <span style="color:var(--text-muted);font-size:0.75rem">{{ formatTime(r.timestamp) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="card legend-card">
+        <p class="card-title" style="font-size:0.875rem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Leyenda de clases
+        </p>
+        <div class="legend-items">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#1e293b;border:1px solid var(--border)"></div>
+            <span>Fondo</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#38bdf8"></div>
+            <span>Región 1</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#818cf8"></div>
+            <span>Región 2</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT: Viewer -->
+    <section class="viewer-panel">
+      <ng-container *ngIf="activeRecord; else emptyState">
+
+        <!-- View controls -->
+        <div class="viewer-controls">
+          <div class="view-tabs">
+            <button class="view-tab" [class.active]="viewMode==='overlay'" (click)="setView('overlay')">Superposición</button>
+            <button class="view-tab" [class.active]="viewMode==='side'" (click)="setView('side')">Antes / Después</button>
+            <button class="view-tab" [class.active]="viewMode==='mask'" (click)="setView('mask')">Solo Máscara</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span class="badge badge-success" *ngIf="activeRecord.status === 'done'">{{ activeRecord.modelUsed }}</span>
+            <button class="btn btn-secondary" (click)="downloadResult()"
+                    [disabled]="activeRecord.status !== 'done'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Guardar
+            </button>
+          </div>
+        </div>
+
+        <!-- OVERLAY VIEW -->
+        <div class="view-container" *ngIf="viewMode === 'overlay'">
+          <div class="image-display" *ngIf="activeRecord.status === 'done'">
+            <img [src]="activeRecord.overlayCanvas" alt="Overlay" class="result-img"/>
+          </div>
+          <div class="status-overlay" *ngIf="activeRecord.status === 'processing'">
+            <div class="spinner large"></div>
+            <p>Procesando con {{ activeRecord.modelUsed }}...</p>
+          </div>
+          <div class="status-overlay error" *ngIf="activeRecord.status === 'error'">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p>{{ activeRecord.errorMsg }}</p>
+          </div>
+        </div>
+
+        <!-- SIDE BY SIDE VIEW -->
+        <div class="view-container side-view" *ngIf="viewMode === 'side'">
+          <div class="side-img-wrap">
+            <div class="side-label">Original</div>
+            <img [src]="activeRecord.originalUrl" alt="Original" class="result-img"/>
+          </div>
+          <div class="side-divider"></div>
+          <div class="side-img-wrap">
+            <div class="side-label">Segmentado</div>
+            <img *ngIf="activeRecord.status === 'done'" [src]="activeRecord.overlayCanvas" alt="Segmentado" class="result-img"/>
+            <div class="status-overlay" *ngIf="activeRecord.status === 'processing'">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MASK ONLY VIEW -->
+        <div class="view-container" *ngIf="viewMode === 'mask'">
+          <div class="image-display" *ngIf="activeRecord.status === 'done'">
+            <img [src]="activeRecord.maskCanvas" alt="Máscara" class="result-img mask-img"/>
+          </div>
+          <div class="status-overlay" *ngIf="activeRecord.status === 'processing'">
+            <div class="spinner large"></div>
+          </div>
+        </div>
+
+      </ng-container>
+
+      <ng-template #emptyState>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </div>
+          <p class="empty-title">Sin imagen seleccionada</p>
+          <p class="empty-hint">Carga una imagen para comenzar la segmentación</p>
+          <button class="btn btn-primary" (click)="triggerFileInput()">Cargar imagen</button>
+        </div>
+      </ng-template>
+    </section>
+
+  </div>
+</div>
