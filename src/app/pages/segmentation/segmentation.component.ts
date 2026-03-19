@@ -42,7 +42,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     public session: SessionService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.models = this.session.MODELS;
@@ -81,7 +81,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   }
 
   async handleFile(file: File) {
-    const allowed = ['image/jpeg','image/png','image/bmp','image/webp','image/tiff'];
+    const allowed = ['image/jpeg', 'image/png', 'image/bmp', 'image/webp', 'image/tiff'];
     if (!allowed.includes(file.type)) {
       alert('Formato no soportado. Use: JPG, PNG, BMP, WEBP o TIFF');
       return;
@@ -157,9 +157,9 @@ export class SegmentationComponent implements OnInit, OnDestroy {
           const i = (y * w + x) * 4;
           const c = colors[cls] || colors[0];
           imageData.data[i] = c[0];
-          imageData.data[i+1] = c[1];
-          imageData.data[i+2] = c[2];
-          imageData.data[i+3] = c[3];
+          imageData.data[i + 1] = c[1];
+          imageData.data[i + 2] = c[2];
+          imageData.data[i + 3] = c[3];
         }
       }
       ctx.putImageData(imageData, 0, 0);
@@ -174,12 +174,19 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d')!;
+
+        // Draw base image ONCE
         ctx.drawImage(img, 0, 0, w, h);
-        const overlayData = ctx.createImageData(w, h);
-        const colors = [
+
+        // Build overlay on separate canvas
+        const tmp = document.createElement('canvas');
+        tmp.width = w; tmp.height = h;
+        const tCtx = tmp.getContext('2d')!;
+        const overlayData = tCtx.createImageData(w, h);
+        const colors: ({ r: number; g: number; b: number } | null)[] = [
           null,
-          { r: 56, g: 189, b: 248, a: 140 },
-          { r: 129, g: 140, b: 248, a: 140 },
+          { r: 56, g: 189, b: 248 },
+          { r: 129, g: 140, b: 248 },
         ];
         for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
@@ -188,18 +195,12 @@ export class SegmentationComponent implements OnInit, OnDestroy {
             if (c) {
               const i = (y * w + x) * 4;
               overlayData.data[i] = c.r;
-              overlayData.data[i+1] = c.g;
-              overlayData.data[i+2] = c.b;
-              overlayData.data[i+3] = c.a;
+              overlayData.data[i + 1] = c.g;
+              overlayData.data[i + 2] = c.b;
+              overlayData.data[i + 3] = 160;
             }
           }
         }
-        // Draw base image
-        ctx.drawImage(img, 0, 0, w, h);
-        // Draw overlay
-        const tmp = document.createElement('canvas');
-        tmp.width = w; tmp.height = h;
-        const tCtx = tmp.getContext('2d')!;
         tCtx.putImageData(overlayData, 0, 0);
         ctx.drawImage(tmp, 0, 0);
         res(canvas.toDataURL());
