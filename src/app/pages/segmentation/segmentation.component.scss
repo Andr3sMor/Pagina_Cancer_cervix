@@ -132,6 +132,10 @@
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); }
 .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 
+.bg-fondo { background: #1e293b !important; border: 1px solid var(--border); }
+.bg-anormal { background: #ff0000 !important; }
+.bg-normal { background: #00ff00 !important; }
+
 /* Viewer */
 .viewer-panel {
   background: var(--surface-2);
