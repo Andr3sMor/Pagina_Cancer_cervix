@@ -248,30 +248,37 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     return new Promise(res => {
       const img = new Image();
       img.onload = () => {
+        // Usar las dimensiones reales de la imagen, no las del modelo
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
+
         const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
+        canvas.width = imgW; canvas.height = imgH;
         const ctx = canvas.getContext('2d')!;
 
-        // Draw base image ONCE
-        ctx.drawImage(img, 0, 0, w, h);
+        // Dibujar imagen en su tamaño original
+        ctx.drawImage(img, 0, 0, imgW, imgH);
 
-        // Build overlay on separate canvas
+        // Construir overlay escalando la máscara al tamaño real de la imagen
         const tmp = document.createElement('canvas');
-        tmp.width = w; tmp.height = h;
+        tmp.width = imgW; tmp.height = imgH;
         const tCtx = tmp.getContext('2d')!;
-        const overlayData = tCtx.createImageData(w, h);
+        const overlayData = tCtx.createImageData(imgW, imgH);
         const colors: ({ r: number; g: number; b: number } | null)[] = [
           null,
           { r: 56, g: 189, b: 248 },
           { r: 129, g: 140, b: 248 },
         ];
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            const cls = mask[y][x];
-            const c = colors[cls];
+        for (let y = 0; y < imgH; y++) {
+          for (let x = 0; x < imgW; x++) {
+            // Mapear coordenadas de la imagen a coordenadas de la máscara
+            const maskY = Math.floor(y * h / imgH);
+            const maskX = Math.floor(x * w / imgW);
+            const cls = mask[maskY]?.[maskX];
+            const c = cls != null ? colors[cls] : null;
             if (c) {
-              const i = (y * w + x) * 4;
-              overlayData.data[i] = c.r;
+              const i = (y * imgW + x) * 4;
+              overlayData.data[i]     = c.r;
               overlayData.data[i + 1] = c.g;
               overlayData.data[i + 2] = c.b;
               overlayData.data[i + 3] = 160;
