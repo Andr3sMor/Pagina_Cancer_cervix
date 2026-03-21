@@ -80,6 +80,21 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     if (file) this.handleFile(file);
   }
 
+  private getNormalizedBlob(file: File): Promise<Blob> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.95);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   async handleFile(file: File) {
     const allowed = ['image/jpeg', 'image/png', 'image/bmp', 'image/webp', 'image/tiff'];
     if (!allowed.includes(file.type)) {
@@ -87,7 +102,10 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const originalUrl = await this.fileToDataUrl(file);
+    const normalizedBlob = await this.getNormalizedBlob(file);
+    const normalizedFile = new File([normalizedBlob], file.name, { type: 'image/jpeg' });
+    const originalUrl = await this.fileToDataUrl(normalizedFile);
+    
     const model = this.session.selectedModel;
     const record: ImageRecord = {
       id: crypto.randomUUID(),
@@ -108,7 +126,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
     try {
       const formData = new FormData();
-      formData.append('file', file, file.name);
+      formData.append('file', normalizedFile, file.name);
       
       console.log('Conectando con el modelo:', model.apiUrl);
       const result = await this.http.post<any>(model.apiUrl, formData).toPromise();
