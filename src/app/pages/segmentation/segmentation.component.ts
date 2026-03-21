@@ -33,9 +33,9 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   private subs = new Subscription();
 
   CLASS_COLORS = [
-    { r: 0, g: 0, b: 0, a: 0 },          // background - transparent
-    { r: 56, g: 189, b: 248, a: 180 },    // class 1 - teal
-    { r: 129, g: 140, b: 248, a: 180 },   // class 2 - indigo
+    { r: 0, g: 0, b: 0, a: 0 },          // 0: fondo - transparent
+    { r: 56, g: 189, b: 248, a: 180 },    // 1: anormal - teal
+    { r: 129, g: 140, b: 248, a: 180 },   // 2: normal - indigo
   ];
 
   constructor(
@@ -87,7 +87,9 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const originalUrl = await this.fileToDataUrl(file);
+    const rawUrl = await this.fileToDataUrl(file);
+    // Bake EXIF orientation into the data URL so canvas rendering matches browser display
+    const originalUrl = await this.normalizeOrientation(file, rawUrl);
     const model = this.session.selectedModel;
     const record: ImageRecord = {
       id: crypto.randomUUID(),
@@ -137,6 +139,81 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       const reader = new FileReader();
       reader.onload = e => res(e.target!.result as string);
       reader.readAsDataURL(file);
+    });
+  }
+
+  /**
+   * Reads the EXIF orientation tag from a JPEG file.
+   * Returns a value from 1–8 (1 = normal, no rotation needed).
+   */
+  private getExifOrientation(file: File): Promise<number> {
+    return new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const view = new DataView(e.target!.result as ArrayBuffer);
+        // Check JPEG SOI marker
+        if (view.getUint16(0, false) !== 0xFFD8) { res(1); return; }
+        let offset = 2;
+        while (offset < view.byteLength) {
+          if (view.getUint16(offset, false) === 0xFFE1) {
+            // APP1 marker found
+            const exifHeader = view.getUint32(offset + 4, false);
+            if (exifHeader !== 0x45786966) { res(1); return; } // 'Exif'
+            const little = view.getUint16(offset + 10, false) === 0x4949;
+            const ifdOffset = view.getUint32(offset + 14, little);
+            const tags = view.getUint16(offset + 10 + ifdOffset, little);
+            for (let i = 0; i < tags; i++) {
+              const tagBase = offset + 10 + ifdOffset + 2 + (i * 12);
+              if (view.getUint16(tagBase, little) === 0x0112) {
+                res(view.getUint16(tagBase + 8, little));
+                return;
+              }
+            }
+            res(1); return;
+          }
+          offset += 2 + view.getUint16(offset + 2, false);
+        }
+        res(1);
+      };
+      reader.onerror = () => res(1);
+      reader.readAsArrayBuffer(file.slice(0, 65536));
+    });
+  }
+
+  /**
+   * Returns a corrected data URL that has EXIF rotation baked in,
+   * so canvas operations produce the same orientation the browser would show.
+   */
+  private async normalizeOrientation(file: File, dataUrl: string): Promise<string> {
+    const orientation = await this.getExifOrientation(file);
+    if (orientation <= 1) return dataUrl; // already correct
+
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+
+        // Orientations 5–8 swap width and height
+        if (orientation >= 5) { canvas.width = h; canvas.height = w; }
+        else                   { canvas.width = w; canvas.height = h; }
+
+        // Apply the transform that undoes the EXIF rotation
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0,  1, w, 0); break;
+          case 3: ctx.transform(-1, 0, 0, -1, w, h); break;
+          case 4: ctx.transform( 1, 0, 0, -1, 0, h); break;
+          case 5: ctx.transform( 0, 1, 1,  0, 0, 0); break;
+          case 6: ctx.transform( 0, 1,-1,  0, h, 0); break;
+          case 7: ctx.transform( 0,-1,-1,  0, h, w); break;
+          case 8: ctx.transform( 0,-1, 1,  0, 0, w); break;
+        }
+        ctx.drawImage(img, 0, 0);
+        res(canvas.toDataURL('image/jpeg', 0.95));
+      };
+      img.src = dataUrl;
     });
   }
 
