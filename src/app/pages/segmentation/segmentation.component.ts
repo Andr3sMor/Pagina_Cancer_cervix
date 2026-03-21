@@ -34,8 +34,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
   CLASS_COLORS = [
     { r: 0, g: 0, b: 0, a: 0 },          // 0: fondo - transparent
-    { r: 56, g: 189, b: 248, a: 180 },    // 1: anormal - teal
-    { r: 129, g: 140, b: 248, a: 180 },   // 2: normal - indigo
+    { r: 255, g: 0, b: 0, a: 180 },       // 1: anormal - rojo
+    { r: 0, g: 255, b: 0, a: 180 },       // 2: normal - verde
   ];
 
   constructor(
@@ -87,9 +87,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const rawUrl = await this.fileToDataUrl(file);
-    // Bake EXIF orientation into the data URL so canvas rendering matches browser display
-    const originalUrl = await this.normalizeOrientation(file, rawUrl);
+    const originalUrl = await this.fileToDataUrl(file);
     const model = this.session.selectedModel;
     const record: ImageRecord = {
       id: crypto.randomUUID(),
@@ -111,7 +109,10 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     try {
       const formData = new FormData();
       formData.append('file', file, file.name);
+      
+      console.log('Conectando con el modelo:', model.apiUrl);
       const result = await this.http.post<any>(model.apiUrl, formData).toPromise();
+      console.log('Respuesta del modelo:', result);
 
       const maskCanvas = await this.renderMask(result.mask, result.shape[0], result.shape[1]);
       const overlayCanvas = await this.renderOverlay(originalUrl, result.mask, result.shape[0], result.shape[1]);
@@ -225,8 +226,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       const imageData = ctx.createImageData(w, h);
       const colors = [
         [15, 23, 42, 255],
-        [56, 189, 248, 255],
-        [129, 140, 248, 255],
+        [255, 0, 0, 255],   // anormal: rojo
+        [0, 255, 0, 255],   // normal: verde
       ];
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
@@ -266,8 +267,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         const overlayData = tCtx.createImageData(imgW, imgH);
         const colors: ({ r: number; g: number; b: number } | null)[] = [
           null,
-          { r: 56, g: 189, b: 248 },
-          { r: 129, g: 140, b: 248 },
+          { r: 255, g: 0, b: 0 },   // anormal: rojo
+          { r: 0, g: 255, b: 0 },   // normal: verde
         ];
         for (let y = 0; y < imgH; y++) {
           for (let x = 0; x < imgW; x++) {
@@ -319,4 +320,4 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   formatTime(d: Date): string {
     return new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
   }
-}
+}       
