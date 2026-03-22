@@ -38,9 +38,9 @@ export interface ModelStats {
 export class SessionService {
   readonly MODELS: ModelConfig[] = [
     {
-      id: 'mmm-ucervix',
-      name: 'MMM U-Cervix',
-      apiUrl: 'https://andr3s2004-models.hf.space/predict',
+      id: 'mmm-ucervix-best',
+      name: 'MMM U-Cervix (Best)',
+      apiUrl: 'https://andr3s2004-models.hf.space/predict/best',
       description: 'Modelo U-Net con preprocesamiento CLAHE y morfología avanzada para segmentación cervical',
       stats: {
         accuracy: 0.9312,
@@ -52,6 +52,23 @@ export class SessionService {
         trainEpochs: 50,
         trainLoss: 0.1823,
         valLoss: 0.2104,
+      }
+    },
+    {
+      id: 'mmm-ucervix-resunet',
+      name: 'MMM Res-UNet',
+      apiUrl: 'https://andr3s2004-models.hf.space/predict/resunet',
+      description: 'Modelo Residual U-Net con preprocesamiento CLAHE y morfología avanzada para segmentación cervical',
+      stats: {
+        accuracy: 0.9187,
+        iou: 0.7634,
+        dice: 0.8102,
+        precision: 0.7956,
+        recall: 0.8284,
+        f1: 0.8117,
+        trainEpochs: 50,
+        trainLoss: 0.1951,
+        valLoss: 0.2238,
       }
     }
   ];
