@@ -114,7 +114,7 @@
           <div class="view-tabs">
             <button class="view-tab" [class.active]="viewMode==='overlay'" (click)="setView('overlay')">Superposición</button>
             <button class="view-tab" [class.active]="viewMode==='side'" (click)="setView('side')">Antes / Después</button>
-            <button class="view-tab" [class.active]="viewMode==='mask'" (click)="setView('mask')">Solo Máscara</button>
+            <button class="view-tab" *ngIf="!activeRecord.isYolo" [class.active]="viewMode==='mask'" (click)="setView('mask')">Solo Máscara</button>
           </div>
           <div style="display:flex;gap:8px">
             <span class="badge badge-success" *ngIf="activeRecord.status === 'done'">{{ activeRecord.modelUsed }}</span>
@@ -155,8 +155,8 @@
           </div>
           <div class="side-divider"></div>
           <div class="side-img-wrap">
-            <div class="side-label">Segmentado</div>
-            <img *ngIf="activeRecord.status === 'done'" [src]="activeRecord.overlayCanvas" alt="Segmentado" class="result-img"/>
+            <div class="side-label">{{ activeRecord.isYolo ? 'Detecciones' : 'Segmentado' }}</div>
+            <img *ngIf="activeRecord.status === 'done'" [src]="activeRecord.overlayCanvas" alt="Resultado" class="result-img"/>
             <div class="status-overlay" *ngIf="activeRecord.status === 'processing'">
               <div class="spinner"></div>
             </div>

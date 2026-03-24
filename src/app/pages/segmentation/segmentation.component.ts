@@ -112,11 +112,13 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       fileName: file.name,
       originalUrl,
       maskData: null,
+      detections: null,
       maskCanvas: null,
       overlayCanvas: null,
       modelUsed: model.name,
       timestamp: new Date(),
-      status: 'processing'
+      status: 'processing',
+      isYolo: model.type === 'detection'
     };
 
     this.session.addRecord(record);
@@ -132,12 +134,23 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       const result = await this.http.post<any>(model.apiUrl, formData).toPromise();
       console.log('Respuesta del modelo:', result);
 
-      const maskCanvas = await this.renderMask(result.mask, result.shape[0], result.shape[1]);
-      const overlayCanvas = await this.renderOverlay(originalUrl, result.mask, result.shape[0], result.shape[1]);
+      let maskCanvas: string | null = null;
+      let overlayCanvas: string | null = null;
+
+      if (model.type === 'segmentation') {
+        maskCanvas = await this.renderMask(result.mask, result.shape[0], result.shape[1]);
+        overlayCanvas = await this.renderOverlay(originalUrl, result.mask, result.shape[0], result.shape[1]);
+      } else if (model.type === 'detection') {
+        overlayCanvas = await this.renderYoloOverlay(originalUrl, result.detections);
+        if (this.viewMode === 'mask') {
+          this.viewMode = 'overlay';
+        }
+      }
 
       this.session.updateRecord(record.id, {
         status: 'done',
-        maskData: result.mask,
+        maskData: result.mask || null,
+        detections: result.detections || null,
         maskCanvas,
         overlayCanvas
       });
@@ -312,7 +325,61 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     });
   }
 
-  selectRecord(r: ImageRecord) { this.activeRecord = r; }
+  private renderYoloOverlay(originalUrl: string, detections: any[]): Promise<string> {
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => {
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = imgW; canvas.height = imgH;
+        const ctx = canvas.getContext('2d')!;
+
+        ctx.drawImage(img, 0, 0, imgW, imgH);
+        
+        ctx.lineWidth = 4;
+        ctx.font = 'bold 18px Arial';
+
+        if (detections && detections.length > 0) {
+          detections.forEach(d => {
+            const [x1, y1, x2, y2] = d.bbox_xyxy;
+            const w = x2 - x1;
+            const h = y2 - y1;
+            
+            let color = '#ff0000'; // rojo (anormal por defecto)
+            const className = (d.class_name || '').toLowerCase();
+            if (className.includes('normal') && !className.includes('anormal')) {
+              color = '#00ff00'; // verde
+            } else if (d.class_id === 2 && !className) {
+              color = '#00ff00'; // asumiendo 2 es normal
+            }
+
+            ctx.strokeStyle = color;
+            ctx.strokeRect(x1, y1, w, h);
+
+            ctx.fillStyle = color;
+            const text = `${d.class_name} (${(d.confidence * 100).toFixed(1)}%)`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillRect(x1, y1 - 24, textWidth + 10, 24);
+
+            ctx.fillStyle = '#000000';
+            ctx.fillText(text, x1 + 5, y1 - 6);
+          });
+        }
+
+        res(canvas.toDataURL());
+      };
+      img.src = originalUrl;
+    });
+  }
+
+  selectRecord(r: ImageRecord) {
+    this.activeRecord = r;
+    if (r.isYolo && this.viewMode === 'mask') {
+      this.viewMode = 'overlay';
+    }
+  }
 
   setView(mode: ViewMode) { this.viewMode = mode; }
 
