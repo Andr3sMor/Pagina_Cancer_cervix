@@ -8,6 +8,18 @@ export interface BoundingBox {
   bbox_xyxy: [number, number, number, number];
 }
 
+export interface ClinicalStats {
+  abnormalPixels: number;
+  normalPixels: number;
+  totalCellPixels: number;
+  abnormalPercentage: number;
+  normalPercentage: number;
+  cancerousCellCount: number;
+  avgConfidence: number;
+  diagnosis: 'NORMAL' | 'ANORMAL' | 'REQUIERE_REVISIÓN';
+  diagnosisMsg: string;
+}
+
 export interface ImageRecord {
   id: string;
   fileName: string;
@@ -21,6 +33,7 @@ export interface ImageRecord {
   status: 'pending' | 'processing' | 'done' | 'error';
   errorMsg?: string;
   isYolo?: boolean;
+  clinicalStats?: ClinicalStats;
 }
 export interface ModelConfig {
   id: string;

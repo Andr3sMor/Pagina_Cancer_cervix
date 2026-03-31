@@ -30,6 +30,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   isLoading = false;
   showCompareTip = false;
   isDarkTheme = false;
+  showClinicalAnalysis = false;
+  showLabels = false;
 
   private subs = new Subscription();
 
@@ -158,15 +160,21 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         }
       }
 
+      const stats = this.calculateClinicalStats(result.mask, result.detections, model);
+
       this.session.updateRecord(record.id, {
         status: 'done',
         maskData: result.mask || null,
         detections: result.detections || null,
         maskCanvas,
-        overlayCanvas
+        overlayCanvas,
+        clinicalStats: stats
       });
 
       this.activeRecord = this.session.records.find(r => r.id === record.id) || null;
+      if (this.activeRecord) {
+        this.showClinicalAnalysis = true; // Auto-show results on finish
+      }
     } catch (err: any) {
       const msg = err?.error?.detail || err?.message || 'Error al conectar con el modelo';
       this.session.updateRecord(record.id, { status: 'error', errorMsg: msg });
@@ -175,6 +183,76 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
     this.isLoading = false;
     this.cdr.detectChanges();
+  }
+
+  private calculateClinicalStats(mask: number[][] | null, detections: any[] | null, model: any): any {
+    let abnormalPixels = 0;
+    let normalPixels = 0;
+    let totalCellPixels = 0;
+    let avgConfidence = 0;
+    let cancerousCellCount = 0;
+
+    if (mask) {
+      mask.forEach(row => {
+        row.forEach(cls => {
+          if (cls === 1) abnormalPixels++;
+          if (cls === 2) normalPixels++;
+        });
+      });
+      totalCellPixels = abnormalPixels + normalPixels;
+    }
+
+    if (detections) {
+      cancerousCellCount = detections.filter(d => 
+        (d.class_name || '').toLowerCase().includes('anormal') || d.class_id === 1
+      ).length;
+      const sumConf = detections.reduce((acc, d) => acc + (d.confidence || 0), 0);
+      avgConfidence = detections.length > 0 ? sumConf / detections.length : 0;
+    } else {
+      // For segmentation models, use model accuracy as confidence proxy
+      avgConfidence = model.stats.accuracy;
+    }
+
+    const abnormalPercentage = totalCellPixels > 0 ? (abnormalPixels / totalCellPixels) * 100 : 0;
+    const normalPercentage = totalCellPixels > 0 ? (normalPixels / totalCellPixels) * 100 : 0;
+
+    const hasCancer = abnormalPixels > 10 || cancerousCellCount > 0;
+    const diagnosis = hasCancer ? 'ANORMAL' : 'NORMAL';
+    const diagnosisMsg = hasCancer 
+      ? 'Se han detectado indicios de celularidad anormal que sugieren presencia de lesiones o cáncer.' 
+      : 'No se detectaron células anormales significativas en la muestra analizada.';
+
+    return {
+      abnormalPixels,
+      normalPixels,
+      totalCellPixels,
+      abnormalPercentage,
+      normalPercentage,
+      cancerousCellCount,
+      avgConfidence,
+      diagnosis,
+      diagnosisMsg
+    };
+  }
+
+  async toggleLabels() {
+    this.showLabels = !this.showLabels;
+    if (this.activeRecord && this.activeRecord.status === 'done') {
+      const model = this.session.selectedModel;
+      if (model.type === 'segmentation') {
+        // Re-render overlay with/without labels
+        const overlay = await this.renderOverlay(
+          this.activeRecord.originalUrl, 
+          this.activeRecord.maskData!, 
+          this.activeRecord.maskData!.length, 
+          this.activeRecord.maskData![0].length
+        );
+        this.session.updateRecord(this.activeRecord.id, { overlayCanvas: overlay });
+        this.activeRecord = this.session.records.find(r => r.id === this.activeRecord!.id) || null;
+      }
+      // YOLO already draws labels, we follow user request not to touch it
+      this.cdr.detectChanges();
+    }
   }
 
   private fileToDataUrl(file: File): Promise<string> {
@@ -302,6 +380,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         // Dibujar imagen en su tamaño original
         ctx.drawImage(img, 0, 0, imgW, imgH);
 
+        const model = this.session.selectedModel;
+
         // Construir overlay escalando la máscara al tamaño real de la imagen
         const tmp = document.createElement('canvas');
         tmp.width = imgW; tmp.height = imgH;
@@ -330,6 +410,27 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         }
         tCtx.putImageData(overlayData, 0, 0);
         ctx.drawImage(tmp, 0, 0);
+
+        // Draw probability labels if enabled for segmentation
+        if (this.showLabels && model.id !== 'mmm-ucervix-yolo') {
+          const confidence = (model.stats.accuracy * 100).toFixed(1);
+          const label = `Probabilidad Det: ${confidence}%`;
+          ctx.font = 'bold 24px Inter';
+          const textWidth = ctx.measureText(label).width;
+          
+          // Background for label
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(20, 20, textWidth + 24, 40);
+          
+          // Accent line
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(20, 20, 4, 40);
+          
+          // Text
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(label, 36, 48);
+        }
+
         res(canvas.toDataURL());
       };
       img.src = originalUrl;
