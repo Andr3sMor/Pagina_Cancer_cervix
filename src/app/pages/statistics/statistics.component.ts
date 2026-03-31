@@ -15,6 +15,7 @@ export class StatisticsComponent implements OnInit {
   selectedModelId = '';
   selectedModel: ModelConfig | null = null;
   showCompareModal = false;
+  isDarkTheme = false;
 
   METRICS = [
     { key: 'accuracy',  label: 'Accuracy',   icon: '🎯', color: '#38bdf8', description: 'Porcentaje de píxeles clasificados correctamente' },
@@ -34,6 +35,7 @@ export class StatisticsComponent implements OnInit {
   constructor(public session: SessionService) {}
 
   ngOnInit() {
+    this.isDarkTheme = document.body.classList.contains('dark-theme');
     this.models = this.session.MODELS;
     this.session.selectedModel$.subscribe(m => {
       this.selectedModelId = m.id;
@@ -63,4 +65,13 @@ export class StatisticsComponent implements OnInit {
   toPercent(v: number): string { return (v * 100).toFixed(1) + '%'; }
   barWidth(v: number): string  { return (v * 100) + '%'; }
   toggleCompare() { this.showCompareModal = !this.showCompareModal; }
+
+  toggleTheme() {
+    this.isDarkTheme = !this.isDarkTheme;
+    if (this.isDarkTheme) {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+  }
 }

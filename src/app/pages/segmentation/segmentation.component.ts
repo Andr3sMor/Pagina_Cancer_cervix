@@ -29,6 +29,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   isDragging = false;
   isLoading = false;
   showCompareTip = false;
+  isDarkTheme = false;
 
   private subs = new Subscription();
 
@@ -45,6 +46,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit() {
+    this.isDarkTheme = document.body.classList.contains('dark-theme');
     this.models = this.session.MODELS;
     this.subs.add(this.session.selectedModel$.subscribe(m => {
       this.selectedModelId = m.id;
@@ -60,6 +62,15 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.subs.unsubscribe(); }
 
   onModelChange() { this.session.selectModel(this.selectedModelId); }
+
+  toggleTheme() {
+    this.isDarkTheme = !this.isDarkTheme;
+    if (this.isDarkTheme) {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+  }
 
   triggerFileInput() { this.fileInputRef.nativeElement.click(); }
 
