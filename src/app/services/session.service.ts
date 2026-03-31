@@ -68,8 +68,8 @@ export class SessionService {
   readonly MODELS: ModelConfig[] = [
     {
       id: 'mmm-ucervix-base',
-      name: 'MMM U-Cervix',
-      apiUrl: 'https://andr3s2004-models.hf.space/predict/base',
+      name: 'MMM U-Cervix (Base)',
+      apiUrl: 'https://andr3s2004-models.hf.space/predict/best',
       description: 'Modelo de segmentación U-Net base (Multimodal)',
       type: 'segmentation',
       stats: { 
