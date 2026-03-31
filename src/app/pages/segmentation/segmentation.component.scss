@@ -211,9 +211,9 @@
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
 }
 
 .bg-fondo { background: var(--class-0) !important; border: 1px solid var(--border); }
@@ -279,7 +279,7 @@
   max-width: 100%;
   max-height: 70vh;
   object-fit: contain;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   background: #000; /* Fondo negro para imágenes médicas */
 }

@@ -182,16 +182,16 @@
 }
 
 .metric-bar-bg {
-  height: 6px;
+  height: 8px;
   background: var(--surface-3);
-  border-radius: 3px;
+  border-radius: 4px;
   margin-bottom: 1rem;
   overflow: hidden;
 }
 
 .metric-bar {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
