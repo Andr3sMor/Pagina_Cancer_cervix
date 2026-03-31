@@ -270,6 +270,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 2rem;
   position: relative;
   background: var(--bg);
@@ -282,6 +284,14 @@
   border-radius: var(--radius);
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   background: #000; /* Fondo negro para imágenes médicas */
+}
+
+.image-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 /* Side View */
@@ -317,4 +327,36 @@
   .main-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 2rem;
+  gap: 1rem;
+  text-align: center;
+  flex: 1;
+  width: 100%;
+  min-height: 500px;
+}
+
+.empty-icon {
+  opacity: 0.4;
+  margin-bottom: 0.5rem;
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.empty-hint {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
 }
