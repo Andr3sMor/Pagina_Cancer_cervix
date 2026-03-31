@@ -18,11 +18,11 @@ export class StatisticsComponent implements OnInit {
   isDarkTheme = false;
 
   METRICS = [
-    { key: 'accuracy',  label: 'Accuracy',   icon: '🎯', color: '#38bdf8', description: 'Porcentaje de píxeles clasificados correctamente' },
-    { key: 'iou',       label: 'IoU (mIoU)',  icon: '⬡',  color: '#818cf8', description: 'Intersección sobre Unión (Media)' },
-    { key: 'f1',        label: 'F1 Score',    icon: '◆',  color: '#fb923c', description: 'Media armónica de Precisión y Recall' },
-    { key: 'precision', label: 'Precisión',   icon: '◎',  color: '#fbbf24', description: 'Capacidad de evitar falsos positivos' },
-    { key: 'recall',    label: 'Recall',      icon: '◉',  color: '#f472b6', description: 'Capacidad de detectar todos los casos positivos' },
+    { key: 'accuracy',  testKey: 'testAccuracy', label: 'Accuracy',   icon: '🎯', color: '#38bdf8', description: 'Porcentaje de píxeles clasificados correctamente' },
+    { key: 'iou',       testKey: 'testIoU',      label: 'IoU (mIoU)',  icon: '⬡',  color: '#818cf8', description: 'Intersección sobre Unión (Media)' },
+    { key: 'f1',        testKey: 'testF1',       label: 'F1 Score',    icon: '◆',  color: '#fb923c', description: 'Media armónica de Precisión y Recall' },
+    { key: 'precision', testKey: '',             label: 'Precisión',   icon: '◎',  color: '#fbbf24', description: 'Capacidad de evitar falsos positivos' },
+    { key: 'recall',    testKey: '',             label: 'Recall',      icon: '◉',  color: '#f472b6', description: 'Capacidad de detectar todos los casos positivos' },
   ];
 
   TRAIN_METRICS = [

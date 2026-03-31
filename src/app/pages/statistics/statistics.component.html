@@ -65,24 +65,39 @@
       </div>
     </div>
 
-    <!-- Metrics grid -->
+    <!-- Metrics grid con Train vs Test -->
     <div class="section-container">
-      <div class="section-title">Resultados de Evaluación (Global)</div>
-      <div class="metrics-grid">
-        <div *ngFor="let m of METRICS; let i = index" class="metric-card card"
+      <div class="section-title">Rendimiento: Entrenamiento (Val) vs Prueba (Test)</div>
+      <div class="metrics-grid dual-metrics">
+        <div *ngFor="let m of METRICS; let i = index" class="metric-card card dual-card"
              [style.animation-delay]="(i * 0.06) + 's'">
           <div class="metric-header">
             <div class="metric-icon" [style.color]="m.color">{{ m.icon }}</div>
             <div class="metric-label">{{ m.label }}</div>
           </div>
-          <div class="metric-value">
-            {{ toPercent(getMetricValue(m.key)) }}
+          
+          <div class="dual-value-display">
+            <div class="val-box train">
+              <span class="vb-label">TRAIN (Val)</span>
+              <span class="vb-num" [style.color]="m.color">{{ toPercent(getStatNum(selectedModel, m.key)) }}</span>
+            </div>
+            <div class="val-divider" *ngIf="m.testKey"></div>
+            <div class="val-box test" *ngIf="m.testKey">
+              <span class="vb-label">TEST (Global)</span>
+              <span class="vb-num text-accent">{{ toPercent(getStatNum(selectedModel, m.testKey)) }}</span>
+            </div>
           </div>
-          <div class="metric-bar-bg">
-            <div class="metric-bar"
-                 [style.width]="barWidth(getMetricValue(m.key))"
-                 [style.background]="m.color"></div>
+
+          <div class="dual-bars">
+            <div class="bar-wrap">
+              <div class="bar-fill" [style.width]="barWidth(getStatNum(selectedModel, m.key))" [style.background]="m.color"></div>
+            </div>
+            <div class="bar-wrap test" *ngIf="m.testKey">
+              <div class="bar-fill" [style.width]="barWidth(getStatNum(selectedModel, m.testKey))"></div>
+            </div>
           </div>
+
+          <div class="metric-desc">{{ m.description }}</div>
         </div>
       </div>
     </div>
