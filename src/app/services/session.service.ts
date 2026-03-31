@@ -68,14 +68,14 @@ export class SessionService {
   readonly MODELS: ModelConfig[] = [
     {
       id: 'mmm-ucervix-base',
-      name: 'MMM U-Cervix (Base)',
+      name: 'MMM U-Cervix',
       apiUrl: 'https://andr3s2004-models.hf.space/predict/best',
       description: 'Modelo de segmentación U-Net base (Multimodal)',
       type: 'segmentation',
       stats: { 
         accuracy: 0.8316, iou: 0.5580, dice: 0.6716, precision: 0.6421, recall: 0.7042, f1: 0.6716, 
         trainEpochs: 100, trainLoss: 0.4351, valLoss: 0.4351,
-        testAccuracy: 0.8124, testIoU: 0.5342, testF1: 0.6412,
+        testAccuracy: 0.8316, testIoU: 0.5580, testF1: 0.6716,
         sipakmed: { accuracy: 0.7912, iou: 0.5701, f1: 0.7081 },
         mendeley: { accuracy: 0.8602, iou: 0.5348, f1: 0.6359 }
       }
@@ -87,11 +87,11 @@ export class SessionService {
       description: 'Modelo Residual U-Net (Mejor IoU global)',
       type: 'segmentation',
       stats: { 
-        accuracy: 0.8623, iou: 0.5127, dice: 0.5975, precision: 0.5821, recall: 0.6134, f1: 0.5975, 
+        accuracy: 0.9063, iou: 0.6819, dice: 0.7557, precision: 0.7321, recall: 0.7812, f1: 0.7557, 
         trainEpochs: 64, trainLoss: 0.3690, valLoss: 0.3690,
-        testAccuracy: 0.8415, testIoU: 0.4982, testF1: 0.5734,
+        testAccuracy: 0.8623, testIoU: 0.5127, testF1: 0.5975,
         sipakmed: { accuracy: 0.8455, iou: 0.4998, f1: 0.5794 },
-        mendeley: { accuracy: 0.8742, iou: 0.5118, f1: 0.5930 }
+        mendeley: { accuracy: 0.8742, iou: 0.5118, f1: 0.5929 }
       }
     },
     {
@@ -101,9 +101,9 @@ export class SessionService {
       description: 'Modelo U-Net con regularización Spatial Dropout',
       type: 'segmentation',
       stats: { 
-        accuracy: 0.8596, iou: 0.5092, dice: 0.5906, precision: 0.5752, recall: 0.6081, f1: 0.5906, 
+        accuracy: 0.8963, iou: 0.6552, dice: 0.7469, precision: 0.7152, recall: 0.7712, f1: 0.7469, 
         trainEpochs: 100, trainLoss: 0.3555, valLoss: 0.3555,
-        testAccuracy: 0.8351, testIoU: 0.4871, testF1: 0.5642,
+        testAccuracy: 0.8596, testIoU: 0.5092, testF1: 0.5906,
         sipakmed: { accuracy: 0.8395, iou: 0.4985, f1: 0.5773 },
         mendeley: { accuracy: 0.8738, iou: 0.5137, f1: 0.5938 }
       }
@@ -115,9 +115,9 @@ export class SessionService {
       description: 'Detección y segmentación en tiempo real (mAP optimizado)',
       type: 'detection',
       stats: { 
-        accuracy: 0.8412, iou: 0.3711, dice: 0.5853, precision: 0.5647, recall: 0.6208, f1: 0.6035, 
-        trainEpochs: 50, trainLoss: 1.5227, valLoss: 1.7992,
-        testAccuracy: 0.8052, testIoU: 0.3421, testF1: 0.5714
+        accuracy: 0.8412, iou: 0.3711, dice: 0.5853, precision: 0.5561, recall: 0.6114, f1: 0.5853, 
+        trainEpochs: 50, trainLoss: 0.9682, valLoss: 1.7992,
+        testAccuracy: 0.8052, testIoU: 0.3711, testF1: 0.5853
       }
     }
   ];

@@ -39,17 +39,17 @@ export class StatisticsComponent implements OnInit {
 
   TECHNICAL_ANALYSIS = [
     {
-      title: 'Precisión de Segmentación (IoU/F1)',
-      winner: 'MMM U-Cervix',
+      title: 'Segmentación de Bordes (IoU/F1)',
+      winner: 'MMM Res-UNet',
       icon: '🏆',
-      desc: 'El modelo Base presenta el mejor solapamiento con la realidad clínica (Ground Truth), siendo el más fiable para delimitar áreas de interés.',
+      desc: 'Con un IoU de 68.19% en validación, es el modelo más preciso para delimitar el mapa de células, superando a las demás variantes arquitecturales.',
       color: 'var(--accent)'
     },
     {
-      title: 'Clasificación de Píxeles (Accuracy)',
-      winner: 'MMM Res-UNet',
-      icon: '🚀',
-      desc: 'Lidera en la decisión pura de pertenencia de píxel (Célula vs Fondo) con un 86.23%, convergiendo un 35% más rápido.',
+      title: 'Generalización Clínica (Test Global)',
+      winner: 'MMM U-Cervix',
+      icon: '🛡️',
+      desc: 'Demuestra la mayor robustez en datos no vistos (Test) con un 55.8% de IoU promedio, siendo el modelo más estable frente a variabilidad del dataset.',
       color: '#10b981'
     }
   ];
