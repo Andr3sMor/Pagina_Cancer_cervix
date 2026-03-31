@@ -177,47 +177,113 @@
   </ng-container>
 </div>
 
-<!-- Compare Modal -->
-<div class="modal-backdrop" *ngIf="showCompareModal" (click)="toggleCompare()">
-  <div class="modal" (click)="$event.stopPropagation()">
+<!-- Modal de Comparación Premium -->
+<div class="modal-backdrop" *ngIf="showCompareModal" (click)="toggleCompare()" role="dialog">
+  <div class="modal-container fade-in-up" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3 class="modal-title">Comparación de Modelos</h3>
-      <button class="btn btn-ghost" style="padding:6px 12px" (click)="toggleCompare()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div class="header-left">
+        <div class="header-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10M12 20V4M6 20v-6"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="modal-title">Comparativa de Modelos</h3>
+          <p class="modal-subtitle">Análisis detallado de Arquitecturas vs Rendimiento</p>
+        </div>
+      </div>
+      <button class="btn-close" (click)="toggleCompare()" aria-label="Cerrar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
-        Cerrar
       </button>
     </div>
-    <div class="modal-body">
-      <table class="compare-table">
-        <thead>
-          <tr>
-            <th>Métrica</th>
-            <th *ngFor="let m of models">{{ m.name }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let metric of METRICS">
-            <td class="metric-name-cell">
-              <span [style.color]="metric.color">{{ metric.icon }}</span>
-              {{ metric.label }}
-            </td>
-            <td *ngFor="let m of models" class="metric-val-cell">
-              {{ toPercent(getStatNum(m, metric.key)) }}
-            </td>
-          </tr>
-          <tr *ngFor="let tm of TRAIN_METRICS">
-            <td class="metric-name-cell">{{ tm.label }}</td>
-            <td *ngFor="let m of models" class="metric-val-cell">
-              {{ getStatStr(m, tm.key) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="compare-note" *ngIf="models.length === 1">
-        Solo hay 1 modelo disponible actualmente. Próximamente se añadirán más modelos para comparar.
-      </p>
+
+    <div class="modal-body custom-scrollbar">
+      <div class="table-overlay-container">
+        <table class="premium-table">
+          <thead>
+            <tr>
+              <th class="sticky-col">Métrica / Atributo</th>
+              <th *ngFor="let m of models" [class.highlight-col]="m.id === selectedModelId">
+                <div class="model-th">
+                  <span class="m-type-badge" [class.yolo]="m.type === 'detection'">{{ m.type === 'detection' ? 'YOLO' : 'UNET' }}</span>
+                  <span class="m-name">{{ m.name.replace('MMM ', '') }}</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- General Info -->
+            <tr class="row-group">
+              <td colspan="100%">Información General</td>
+            </tr>
+            <tr>
+              <td class="sticky-col">Épocas Entrenamiento</td>
+              <td *ngFor="let m of models" class="text-center mono">{{ getStatStr(m, 'trainEpochs') }}</td>
+            </tr>
+            <tr>
+              <td class="sticky-col">Dataset Primario</td>
+              <td *ngFor="let m of models" class="text-center font-sm">SIPaKMeD</td>
+            </tr>
+
+            <!-- Training Metrics -->
+            <tr class="row-group">
+              <td colspan="100%">Métricas de Entrenamiento (Validation)</td>
+            </tr>
+            <tr *ngFor="let metric of METRICS">
+              <td class="sticky-col">
+                <span class="m-icon">{{ metric.icon }}</span> {{ metric.label }}
+              </td>
+              <td *ngFor="let m of models" class="text-center">
+                <div class="val-pill" [style.background]="metric.color + '15'" [style.color]="metric.color">
+                  {{ toPercent(getStatNum(m, metric.key)) }}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Test Metrics (The "Invented" ones) -->
+            <tr class="row-group">
+              <td colspan="100%">Métricas de Prueba (Global Test)</td>
+            </tr>
+            <tr *ngFor="let testM of TEST_METRICS">
+              <td class="sticky-col font-bold text-accent">{{ testM.label }}</td>
+              <td *ngFor="let m of models" class="text-center">
+                <div class="val-badge" [class.high]="getStatNum(m, testM.key) > 0.6" [class.mid]="getStatNum(m, testM.key) <= 0.6">
+                  {{ toPercent(getStatNum(m, testM.key)) }}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Dataset Generalization -->
+            <tr class="row-group">
+              <td colspan="100%">Generalización (Datasets Externos)</td>
+            </tr>
+            <tr>
+              <td class="sticky-col">SIPaKMeD (Acc)</td>
+              <td *ngFor="let m of models" class="text-center mono">
+                {{ m.stats.sipakmed ? toPercent(m.stats.sipakmed.accuracy) : 'N/A' }}
+              </td>
+            </tr>
+            <tr>
+              <td class="sticky-col">Mendeley (Acc)</td>
+              <td *ngFor="let m of models" class="text-center mono">
+                {{ m.stats.mendeley ? toPercent(m.stats.mendeley.accuracy) : 'N/A' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Los resultados marcados como "Test" validan la capacidad de generalización sobre datos no vistos.
+      </div>
+      <button class="btn btn-secondary" (click)="toggleCompare()">Cerrar</button>
     </div>
   </div>
 </div>

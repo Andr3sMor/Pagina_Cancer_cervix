@@ -31,6 +31,12 @@ export class StatisticsComponent implements OnInit {
     { key: 'valLoss',     label: 'Val Loss' },
   ];
 
+  TEST_METRICS = [
+    { key: 'testAccuracy', label: 'Test Acc' },
+    { key: 'testIoU',      label: 'Test IoU' },
+    { key: 'testF1',       label: 'Test F1'  },
+  ];
+
   constructor(public session: SessionService) {}
 
   ngOnInit() {
