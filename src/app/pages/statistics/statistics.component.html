@@ -31,97 +31,149 @@
   </div>
 
   <ng-container *ngIf="selectedModel">
-
-    <!-- Model info card -->
-    <div class="model-info-card card">
-      <div class="model-badge">
-        <div class="model-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="model-name">{{ selectedModel.name }}</h2>
-          <p class="model-desc">{{ selectedModel.description }}</p>
+    <!-- Model info row -->
+    <div class="model-info-row">
+      <div class="model-info-card card">
+        <div class="model-badge">
+          <div class="model-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="model-name">{{ selectedModel.name }}</h2>
+            <p class="model-desc">{{ selectedModel.description }}</p>
+          </div>
         </div>
       </div>
-      <div class="train-stats">
-        <div *ngFor="let tm of TRAIN_METRICS" class="train-stat">
-          <span class="train-val">{{ getTrainValue(tm.key) }}</span>
-          <span class="train-label">{{ tm.label }}</span>
+
+      <div class="train-summary-card card">
+        <div class="train-stats-grid">
+          <div class="train-stat">
+            <span class="train-label">Épocas</span>
+            <span class="train-val">{{ getTrainValue('trainEpochs') }}</span>
+          </div>
+          <div class="train-stat">
+            <span class="train-label">Train Loss</span>
+            <span class="train-val">{{ getTrainValue('trainLoss') }}</span>
+          </div>
+          <div class="train-stat">
+            <span class="train-label">Test Loss</span>
+            <span class="train-val">{{ getTrainValue('valLoss') }}</span>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Metrics grid -->
-    <div class="metrics-grid">
-      <div *ngFor="let m of METRICS; let i = index" class="metric-card card"
-           [style.animation-delay]="(i * 0.06) + 's'">
-        <div class="metric-header">
-          <div class="metric-icon" [style.color]="m.color">{{ m.icon }}</div>
-          <div class="metric-label">{{ m.label }}</div>
-        </div>
-        <div class="metric-value" [style.color]="m.color">
-          {{ toPercent(getMetricValue(m.key)) }}
-        </div>
-        <div class="metric-bar-bg">
-          <div class="metric-bar"
-               [style.width]="barWidth(getMetricValue(m.key))"
-               [style.background]="m.color"></div>
-        </div>
-        <div class="metric-desc">{{ m.description }}</div>
-      </div>
-    </div>
-
-    <!-- Training summary -->
-    <div class="chart-section card">
-      <p class="card-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
-        Resumen de Entrenamiento
-      </p>
-      <div class="loss-summary">
-        <div class="loss-item">
-          <div class="loss-dot" style="background:var(--accent)"></div>
-          <div>
-            <span class="loss-label">Train Loss final</span>
-            <span class="loss-value">{{ getTrainValue('trainLoss') }}</span>
+    <div class="section-container">
+      <div class="section-title">Resultados de Evaluación (Global)</div>
+      <div class="metrics-grid">
+        <div *ngFor="let m of METRICS; let i = index" class="metric-card card"
+             [style.animation-delay]="(i * 0.06) + 's'">
+          <div class="metric-header">
+            <div class="metric-icon" [style.color]="m.color">{{ m.icon }}</div>
+            <div class="metric-label">{{ m.label }}</div>
           </div>
-        </div>
-        <div class="loss-item">
-          <div class="loss-dot" style="background:var(--accent-2)"></div>
-          <div>
-            <span class="loss-label">Validation Loss final</span>
-            <span class="loss-value">{{ getTrainValue('valLoss') }}</span>
+          <div class="metric-value">
+            {{ toPercent(getMetricValue(m.key)) }}
           </div>
-        </div>
-        <div class="loss-item">
-          <div class="loss-dot" style="background:var(--success)"></div>
-          <div>
-            <span class="loss-label">Épocas entrenadas</span>
-            <span class="loss-value">{{ getTrainValue('trainEpochs') }}</span>
+          <div class="metric-bar-bg">
+            <div class="metric-bar"
+                 [style.width]="barWidth(getMetricValue(m.key))"
+                 [style.background]="m.color"></div>
           </div>
-        </div>
-      </div>
-      <div class="loss-bars">
-        <div class="loss-bar-row">
-          <span class="loss-bar-label">Train Loss</span>
-          <div class="loss-bar-bg">
-            <div class="loss-bar-fill" style="width:18.23%;background:var(--accent)"></div>
-          </div>
-          <span class="loss-bar-val">{{ getTrainValue('trainLoss') }}</span>
-        </div>
-        <div class="loss-bar-row">
-          <span class="loss-bar-label">Val Loss</span>
-          <div class="loss-bar-bg">
-            <div class="loss-bar-fill" style="width:21.04%;background:var(--accent-2)"></div>
-          </div>
-          <span class="loss-bar-val">{{ getTrainValue('valLoss') }}</span>
         </div>
       </div>
     </div>
 
+    <!-- Generalization Section (only for UNets) -->
+    <div class="section-container" *ngIf="selectedModel.id !== 'mmm-ucervix-yolo'">
+      <div class="section-title">Generalización por Dataset Externo</div>
+      <div class="dataset-grid">
+        <div class="dataset-card card sipakmed">
+          <div class="dataset-header">
+            <span class="dataset-name">SIPaKMeD</span>
+            <span class="dataset-tag">Relajado</span>
+          </div>
+          <div class="dataset-metrics">
+            <div class="d-metric">
+              <span class="dm-label">Accuracy</span>
+              <span class="dm-val">{{ toPercent(getDatasetMetric(selectedModel, 'sipakmed', 'accuracy')) }}</span>
+            </div>
+            <div class="d-metric">
+              <span class="dm-label">IoU</span>
+              <span class="dm-val">{{ toPercent(getDatasetMetric(selectedModel, 'sipakmed', 'iou')) }}</span>
+            </div>
+            <div class="d-metric">
+              <span class="dm-label">F1-Score</span>
+              <span class="dm-val">{{ toPercent(getDatasetMetric(selectedModel, 'sipakmed', 'f1')) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dataset-card card mendeley">
+          <div class="dataset-header">
+            <span class="dataset-name">Mendeley</span>
+            <span class="dataset-tag">Estricto</span>
+          </div>
+          <div class="dataset-metrics">
+            <div class="d-metric">
+              <span class="dm-label">Accuracy</span>
+              <span class="dm-val">{{ toPercent(getDatasetMetric(selectedModel, 'mendeley', 'accuracy')) }}</span>
+            </div>
+            <div class="d-metric">
+              <span class="dm-label">IoU</span>
+              <span class="dm-val">{{ toPercent(getDatasetMetric(selectedModel, 'mendeley', 'iou')) }}</span>
+            </div>
+            <div class="d-metric">
+              <span class="dm-label">F1-Score</span>
+              <span class="dm-val">{{ toPercent(getDatasetMetric(selectedModel, 'mendeley', 'f1')) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparative Table -->
+    <div class="section-container">
+      <div class="section-title">Comparativa de Arquitecturas</div>
+      <div class="table-container card">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Parámetro / Métrica</th>
+              <th *ngFor="let m of models" [class.active]="m.id === selectedModel.id">
+                {{ m.name.replace('MMM ', '') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="row-label">Tipo de Modelo</td>
+              <td *ngFor="let m of models" class="row-val">{{ m.type === 'segmentation' ? 'Semántica' : 'Objeto/Seg' }}</td>
+            </tr>
+            <tr *ngFor="let metric of METRICS">
+              <td class="row-label">
+                <span class="row-icon" [style.color]="metric.color">{{ metric.icon }}</span>
+                {{ metric.label }}
+              </td>
+              <td *ngFor="let m of models" class="row-val" [class.highlight]="m.id === selectedModel.id">
+                {{ toPercent(getStatNum(m, metric.key)) }}
+              </td>
+            </tr>
+            <tr>
+              <td class="row-label">Pérdida (Loss)</td>
+              <td *ngFor="let m of models" class="row-val">{{ getStatNum(m, 'valLoss').toFixed(4) }}</td>
+            </tr>
+            <tr>
+              <td class="row-label">Épocas entrenadas</td>
+              <td *ngFor="let m of models" class="row-val">{{ getStatStr(m, 'trainEpochs') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </ng-container>
 </div>
 

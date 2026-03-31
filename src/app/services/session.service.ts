@@ -54,42 +54,50 @@ export interface ModelStats {
   trainEpochs: number;
   trainLoss: number;
   valLoss: number;
+  // Métricas por dataset (Test)
+  sipakmed?: { accuracy: number; iou: number; f1: number };
+  mendeley?: { accuracy: number; iou: number; f1: number };
 }
 
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   readonly MODELS: ModelConfig[] = [
     {
-      id: 'mmm-ucervix-best',
-      name: 'MMM U-Cervix (Best)',
-      apiUrl: 'https://andr3s2004-models.hf.space/predict/best',
-      description: 'Modelo U-Net optimizado',
-      type: 'segmentation',
-      stats: { accuracy: 0.9312, iou: 0.7845, dice: 0.8291, precision: 0.8103, recall: 0.8512, f1: 0.8303, trainEpochs: 50, trainLoss: 0.1823, valLoss: 0.2104 }
-    },
-    {
       id: 'mmm-ucervix-resunet',
       name: 'MMM Res-UNet',
       apiUrl: 'https://andr3s2004-models.hf.space/predict/resunet',
-      description: 'Modelo Residual U-Net',
+      description: 'Modelo Residual U-Net (Mejor IoU global)',
       type: 'segmentation',
-      stats: { accuracy: 0.9187, iou: 0.7634, dice: 0.8102, precision: 0.7956, recall: 0.8284, f1: 0.8117, trainEpochs: 50, trainLoss: 0.1951, valLoss: 0.2238 }
+      stats: { 
+        accuracy: 0.8623, iou: 0.5127, dice: 0.5975, precision: 0.5821, recall: 0.6134, f1: 0.5975, 
+        trainEpochs: 64, trainLoss: 0.3690, valLoss: 0.3690,
+        sipakmed: { accuracy: 0.8455, iou: 0.4998, f1: 0.5794 },
+        mendeley: { accuracy: 0.8742, iou: 0.5118, f1: 0.5930 }
+      }
     },
     {
       id: 'mmm-ucervix-spatial',
       name: 'MMM Spatial Dropout',
       apiUrl: 'https://andr3s2004-models.hf.space/predict/spatial',
-      description: 'Modelo con Spatial Dropout',
+      description: 'Modelo U-Net con regularización Spatial Dropout',
       type: 'segmentation',
-      stats: { accuracy: 0.9201, iou: 0.7712, dice: 0.8156, precision: 0.8012, recall: 0.8341, f1: 0.8189, trainEpochs: 50, trainLoss: 0.1895, valLoss: 0.2155 }
+      stats: { 
+        accuracy: 0.8596, iou: 0.5092, dice: 0.5906, precision: 0.5752, recall: 0.6081, f1: 0.5906, 
+        trainEpochs: 100, trainLoss: 0.3555, valLoss: 0.3555,
+        sipakmed: { accuracy: 0.8395, iou: 0.4985, f1: 0.5773 },
+        mendeley: { accuracy: 0.8738, iou: 0.5137, f1: 0.5938 }
+      }
     },
     {
       id: 'mmm-ucervix-yolo',
-      name: 'YOLOv8 Detección',
+      name: 'YOLOv8-Seg (Real-time)',
       apiUrl: 'https://andr3s2004-models.hf.space/predict/yolo',
-      description: 'Modelo YOLOv8 para detección de anomalías cervicales',
+      description: 'Detección y segmentación en tiempo real (mAP optimizado)',
       type: 'detection',
-      stats: { accuracy: 0.9412, iou: 0.8105, dice: 0.8402, precision: 0.8521, recall: 0.8814, f1: 0.8654, trainEpochs: 100, trainLoss: 0.1502, valLoss: 0.1801 }
+      stats: { 
+        accuracy: 0.8412, iou: 0.3711, dice: 0.5853, precision: 0.5647, recall: 0.6208, f1: 0.6035, 
+        trainEpochs: 50, trainLoss: 1.5227, valLoss: 1.7992
+      }
     }
   ];
 

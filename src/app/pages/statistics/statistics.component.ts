@@ -19,11 +19,10 @@ export class StatisticsComponent implements OnInit {
 
   METRICS = [
     { key: 'accuracy',  label: 'Accuracy',   icon: '🎯', color: '#38bdf8', description: 'Porcentaje de píxeles clasificados correctamente' },
-    { key: 'iou',       label: 'IoU',         icon: '⬡',  color: '#818cf8', description: 'Intersección sobre Unión (Jaccard Index)' },
-    { key: 'dice',      label: 'Dice Score',  icon: '◈',  color: '#34d399', description: 'Coeficiente de similitud de Dice (F1 espacial)' },
-    { key: 'precision', label: 'Precisión',   icon: '◎',  color: '#fbbf24', description: 'TP / (TP + FP)' },
-    { key: 'recall',    label: 'Recall',      icon: '◉',  color: '#f472b6', description: 'TP / (TP + FN) — Sensibilidad' },
+    { key: 'iou',       label: 'IoU (mIoU)',  icon: '⬡',  color: '#818cf8', description: 'Intersección sobre Unión (Media)' },
     { key: 'f1',        label: 'F1 Score',    icon: '◆',  color: '#fb923c', description: 'Media armónica de Precisión y Recall' },
+    { key: 'precision', label: 'Precisión',   icon: '◎',  color: '#fbbf24', description: 'Capacidad de evitar falsos positivos' },
+    { key: 'recall',    label: 'Recall',      icon: '◉',  color: '#f472b6', description: 'Capacidad de detectar todos los casos positivos' },
   ];
 
   TRAIN_METRICS = [
@@ -46,12 +45,16 @@ export class StatisticsComponent implements OnInit {
   onModelChange() { this.session.selectModel(this.selectedModelId); }
 
   getStatNum(model: ModelConfig, key: string): number {
-    return ((model.stats as unknown) as Record<string, number>)[key] ?? 0;
+    return (model.stats as any)[key] ?? 0;
   }
 
   getStatStr(model: ModelConfig, key: string): string {
-    const v = ((model.stats as unknown) as Record<string, number | string>)[key];
+    const v = (model.stats as any)[key];
     return v !== undefined ? String(v) : '—';
+  }
+
+  getDatasetMetric(model: ModelConfig, dataset: 'sipakmed' | 'mendeley', key: string): number {
+    return (model.stats as any)[dataset]?.[key] ?? 0;
   }
 
   getMetricValue(key: string): number {
