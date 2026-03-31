@@ -235,6 +235,46 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     };
   }
 
+  private findClusters(mask: number[][]): any[] {
+    const h = mask.length;
+    const w = mask[0].length;
+    const visited = Array.from({ length: h }, () => new Uint8Array(w));
+    const clusters: any[] = [];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const cls = mask[y][x];
+        if (cls > 0 && !visited[y][x]) {
+          const cluster = { cls, minX: x, minY: y, maxX: x, maxY: y, pixels: 0 };
+          const queue: [number, number][] = [[x, y]];
+          visited[y][x] = 1;
+
+          while (queue.length > 0) {
+            const [cx, cy] = queue.shift()!;
+            cluster.pixels++;
+            if (cx < cluster.minX) cluster.minX = cx;
+            if (cx > cluster.maxX) cluster.maxX = cx;
+            if (cy < cluster.minY) cluster.minY = cy;
+            if (cy > cluster.maxY) cluster.maxY = cy;
+
+            const neighbors = [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]];
+            for (const [nx, ny] of neighbors) {
+              if (nx >= 0 && nx < w && ny >= 0 && ny < h &&
+                !visited[ny][nx] && mask[ny][nx] === cls) {
+                visited[ny][nx] = 1;
+                queue.push([nx, ny]);
+              }
+            }
+          }
+          if (cluster.pixels > 20) {
+            clusters.push(cluster);
+          }
+        }
+      }
+    }
+    return clusters;
+  }
+
   async toggleLabels() {
     this.showLabels = !this.showLabels;
     if (this.activeRecord && this.activeRecord.status === 'done') {
@@ -413,22 +453,34 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
         // Draw probability labels if enabled for segmentation
         if (this.showLabels && model.id !== 'mmm-ucervix-yolo') {
+          const clusters = this.findClusters(mask);
           const confidence = (model.stats.accuracy * 100).toFixed(1);
-          const label = `Probabilidad Det: ${confidence}%`;
-          ctx.font = 'bold 24px Inter';
-          const textWidth = ctx.measureText(label).width;
           
-          // Background for label
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-          ctx.fillRect(20, 20, textWidth + 24, 40);
-          
-          // Accent line
-          ctx.fillStyle = '#ef4444';
-          ctx.fillRect(20, 20, 4, 40);
-          
-          // Text
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(label, 36, 48);
+          clusters.forEach(c => {
+            // Scale mask coordinates to image coordinates
+            const x = c.minX * imgW / w;
+            const y = c.minY * imgH / h;
+            const bw = (c.maxX - c.minX + 1) * imgW / w;
+            const className = c.cls === 1 ? 'Anormal' : 'Normal';
+            const color = c.cls === 1 ? '#ef4444' : '#22c55e';
+            
+            ctx.font = 'bold 20px Inter';
+            const label = `${className} (${confidence}%)`;
+            const textWidth = ctx.measureText(label).width;
+            
+            // Label box
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y - 28, textWidth + 12, 28);
+            
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(label, x + 6, y - 8);
+            
+            // Optional: Draw subtle border around the blob's bounding box
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, bw, (c.maxY - c.minY + 1) * imgH / h);
+          });
         }
 
         res(canvas.toDataURL());
