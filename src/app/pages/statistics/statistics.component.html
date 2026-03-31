@@ -150,40 +150,71 @@
       </div>
     </div>
 
-    <!-- Comparative Table -->
+    <!-- Análisis Técnico y Veredicto -->
     <div class="section-container">
-      <div class="section-title">Comparativa de Arquitecturas</div>
-      <div class="table-container card">
-        <table class="compare-table">
+      <div class="section-title">Análisis Técnico y Veredicto Especialista</div>
+      <div class="analysis-grid">
+        <div *ngFor="let item of TECHNICAL_ANALYSIS" class="analysis-card card" 
+             [style.border-left]="'4px solid ' + item.color">
+          <div class="analysis-header">
+            <span class="analysis-icon">{{ item.icon }}</span>
+            <h3 class="analysis-title">{{ item.title }}</h3>
+          </div>
+          <div class="analysis-winner">Modelo Destacado: <strong>{{ item.winner }}</strong></div>
+          <p class="analysis-desc">{{ item.desc }}</p>
+        </div>
+      </div>
+      <div class="verdict-banner card">
+        <div class="banner-icon">💡</div>
+        <div class="banner-content">
+          <strong>Conclusión Final:</strong> Se recomienda el uso de <strong>MMM U-Cervix (Base)</strong> para reportes clínicos de alta precisión y <strong>Res-UNet</strong> para despliegues donde la velocidad de inferencia y la clasificación general sean prioritarias.
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparative Table Rediseñada -->
+    <div class="section-container">
+      <div class="section-title">Comparativa de Arquitecturas (Resultados Reales)</div>
+      <div class="table-overlay-container card shadow-premium">
+        <table class="premium-table">
           <thead>
             <tr>
-              <th>Parámetro / Métrica</th>
-              <th *ngFor="let m of models" [class.active]="m.id === selectedModel.id">
-                {{ m.name.replace('MMM ', '') }}
+              <th class="sticky-col">Parámetro / Métrica</th>
+              <th *ngFor="let m of models" [class.highlight-col]="m.id === selectedModelId">
+                <div class="model-th">
+                  <span class="m-type-badge" [class.yolo]="m.type === 'detection'">{{ m.type === 'detection' ? 'YOLO' : 'UNET' }}</span>
+                  <span class="m-name">{{ m.name.replace('MMM ', '') }}</span>
+                  <div class="rec-badge" *ngIf="m.id === 'mmm-ucervix-base'">RECOMENDADO</div>
+                  <div class="eff-badge" *ngIf="m.id === 'mmm-ucervix-resunet'">EFICIENTE</div>
+                </div>
               </th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="row-label">Tipo de Modelo</td>
-              <td *ngFor="let m of models" class="row-val">{{ m.type === 'segmentation' ? 'Semántica' : 'Objeto/Seg' }}</td>
+              <td class="sticky-col">Tipo de Modelo</td>
+              <td *ngFor="let m of models" class="text-center font-sm">{{ m.type === 'segmentation' ? 'Semántica' : 'Objeto/Seg' }}</td>
             </tr>
-            <tr *ngFor="let metric of METRICS">
-              <td class="row-label">
-                <span class="row-icon" [style.color]="metric.color">{{ metric.icon }}</span>
-                {{ metric.label }}
+            <tr *ngFor="let m_meta of METRICS">
+              <td class="sticky-col flex-align">
+                <span class="m-icon" [style.color]="m_meta.color">{{ m_meta.icon }}</span> {{ m_meta.label }}
               </td>
-              <td *ngFor="let m of models" class="row-val" [class.highlight]="m.id === selectedModel.id">
-                {{ toPercent(getStatNum(m, metric.key)) }}
+              <td *ngFor="let m of models" class="text-center">
+                <div class="val-pill" 
+                     [style.background]="isWinner(m.id, m_meta.key) ? m_meta.color + '20' : 'transparent'" 
+                     [style.color]="isWinner(m.id, m_meta.key) ? m_meta.color : 'inherit'"
+                     [class.font-bold]="isWinner(m.id, m_meta.key)">
+                     <span *ngIf="isWinner(m.id, m_meta.key)">✨</span> {{ toPercent(getStatNum(m, m_meta.key)) }}
+                </div>
               </td>
             </tr>
             <tr>
-              <td class="row-label">Pérdida (Loss)</td>
-              <td *ngFor="let m of models" class="row-val">{{ getStatNum(m, 'valLoss').toFixed(4) }}</td>
+              <td class="sticky-col">Pérdida (Loss)</td>
+              <td *ngFor="let m of models" class="text-center mono">{{ getStatStr(m, 'valLoss') }}</td>
             </tr>
             <tr>
-              <td class="row-label">Épocas entrenadas</td>
-              <td *ngFor="let m of models" class="row-val">{{ getStatStr(m, 'trainEpochs') }}</td>
+              <td class="sticky-col">Épocas Entrenamiento</td>
+              <td *ngFor="let m of models" class="text-center font-sm">{{ getStatStr(m, 'trainEpochs') }}</td>
             </tr>
           </tbody>
         </table>

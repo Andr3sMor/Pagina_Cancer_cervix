@@ -37,6 +37,23 @@ export class StatisticsComponent implements OnInit {
     { key: 'testF1',       label: 'Test F1'  },
   ];
 
+  TECHNICAL_ANALYSIS = [
+    {
+      title: 'Precisión de Segmentación (IoU/F1)',
+      winner: 'MMM U-Cervix',
+      icon: '🏆',
+      desc: 'El modelo Base presenta el mejor solapamiento con la realidad clínica (Ground Truth), siendo el más fiable para delimitar áreas de interés.',
+      color: 'var(--accent)'
+    },
+    {
+      title: 'Clasificación de Píxeles (Accuracy)',
+      winner: 'MMM Res-UNet',
+      icon: '🚀',
+      desc: 'Lidera en la decisión pura de pertenencia de píxel (Célula vs Fondo) con un 86.23%, convergiendo un 35% más rápido.',
+      color: '#10b981'
+    }
+  ];
+
   constructor(public session: SessionService) {}
 
   ngOnInit() {
@@ -56,7 +73,16 @@ export class StatisticsComponent implements OnInit {
 
   getStatStr(model: ModelConfig, key: string): string {
     const v = (model.stats as any)[key];
+    if (key === 'valLoss' || key === 'trainLoss') return v?.toFixed(4) || '0.0000';
     return v !== undefined ? String(v) : '—';
+  }
+
+  isWinner(modelId: string, metricKey: string): boolean {
+    const model = this.models.find(m => m.id === modelId);
+    if (!model) return false;
+    const val = this.getStatNum(model, metricKey);
+    const max = Math.max(...this.models.map(m => this.getStatNum(m, metricKey)));
+    return val === max && val > 0;
   }
 
   getDatasetMetric(model: ModelConfig, dataset: 'sipakmed' | 'mendeley', key: string): number {
