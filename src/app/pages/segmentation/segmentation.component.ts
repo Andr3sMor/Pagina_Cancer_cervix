@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { SessionService, ImageRecord, ModelConfig } from '../../services/session.service';
+import { ZipExtractorService } from '../../services/zip-extractor.service';
+import JSZip from 'jszip';
 
 type ViewMode = 'overlay' | 'side' | 'mask';
 
@@ -33,6 +35,18 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   showClinicalAnalysis = false;
   showLabels = false;
 
+  // ── Batch / ZIP state ─────────────────────────────────────────
+  isBatchMode = false;
+  batchTotal = 0;
+  batchProcessed = 0;
+  batchErrors = 0;
+  batchZipName = '';
+  batchSize = 4;          // imágenes enviadas en paralelo por lote
+  showBatchPanel = false; // panel inferior de descarga masiva
+  isExtractingZip = false;
+  zipExtractPct = 0;
+  isBatchDone = false;
+
   private subs = new Subscription();
 
   CLASS_COLORS = [
@@ -44,7 +58,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   constructor(
     public session: SessionService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private zipExtractor: ZipExtractorService
   ) { }
 
   ngOnInit() {
@@ -93,32 +108,105 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     if (file) this.handleFile(file);
   }
 
-  private getNormalizedBlob(file: File): Promise<Blob> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0);
-        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.95);
-      };
-      img.src = URL.createObjectURL(file);
-    });
-  }
-
+  // ─────────────────────────────────────────────────────────────
+  // Entry point: detect ZIP vs single image
+  // ─────────────────────────────────────────────────────────────
   async handleFile(file: File) {
-    const allowed = ['image/jpeg', 'image/png', 'image/bmp', 'image/webp', 'image/tiff'];
-    if (!allowed.includes(file.type)) {
-      alert('Formato no soportado. Use: JPG, PNG, BMP, WEBP o TIFF');
+    if (this.zipExtractor.isRar(file)) {
+      alert(
+        'Los archivos RAR no son compatibles con el navegador.\n' +
+        'Por favor convierte el archivo a ZIP y vuelve a intentarlo.'
+      );
       return;
     }
 
+    if (this.zipExtractor.isZip(file)) {
+      await this.handleZipFile(file);
+      return;
+    }
+
+    // Single image
+    const allowed = ['image/jpeg', 'image/png', 'image/bmp', 'image/webp', 'image/tiff'];
+    if (!allowed.includes(file.type)) {
+      alert('Formato no soportado. Use: JPG, PNG, BMP, WEBP, TIFF o ZIP');
+      return;
+    }
+
+    await this.processSingleImage(file);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // ZIP: extract → batch process
+  // ─────────────────────────────────────────────────────────────
+  async handleZipFile(zipFile: File) {
+    this.isExtractingZip = true;
+    this.zipExtractPct = 0;
+    this.isBatchMode = true;
+    this.isBatchDone = false;
+    this.showBatchPanel = false;
+    this.batchZipName = zipFile.name;
+    this.cdr.detectChanges();
+
+    let extractResult;
+    try {
+      extractResult = await this.zipExtractor.extractImages(zipFile, pct => {
+        this.zipExtractPct = pct;
+        this.cdr.detectChanges();
+      });
+    } catch (err) {
+      alert('Error al leer el ZIP. Verifica que el archivo no esté dañado.');
+      this.isExtractingZip = false;
+      this.isBatchMode = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isExtractingZip = false;
+
+    if (extractResult.files.length === 0) {
+      alert(
+        `El ZIP "${zipFile.name}" no contiene imágenes soportadas (JPG, PNG, BMP, WEBP, TIFF).`
+      );
+      this.isBatchMode = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.batchTotal = extractResult.files.length;
+    this.batchProcessed = 0;
+    this.batchErrors = 0;
+    this.cdr.detectChanges();
+
+    await this.processBatch(extractResult.files);
+
+    this.isBatchDone = true;
+    this.showBatchPanel = true;
+    this.isLoading = false;
+    this.cdr.detectChanges();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Process images in groups of `batchSize` concurrently
+  // ─────────────────────────────────────────────────────────────
+  private async processBatch(images: File[]) {
+    this.isLoading = true;
+
+    for (let i = 0; i < images.length; i += this.batchSize) {
+      const chunk = images.slice(i, i + this.batchSize);
+      await Promise.all(chunk.map(f => this.processSingleImage(f)));
+    }
+
+    this.isLoading = false;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Single image processing (used both standalone & in batches)
+  // ─────────────────────────────────────────────────────────────
+  async processSingleImage(file: File) {
     const normalizedBlob = await this.getNormalizedBlob(file);
     const normalizedFile = new File([normalizedBlob], file.name, { type: 'image/jpeg' });
     const originalUrl = await this.fileToDataUrl(normalizedFile);
-    
+
     const model = this.session.selectedModel;
     const record: ImageRecord = {
       id: crypto.randomUUID(),
@@ -135,17 +223,20 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     };
 
     this.session.addRecord(record);
-    this.activeRecord = record;
-    this.isLoading = true;
+    if (!this.isBatchMode) {
+      this.activeRecord = record;
+      this.isLoading = true;
+    } else {
+      // In batch mode, always show latest processed image
+      this.activeRecord = record;
+    }
     this.cdr.detectChanges();
 
     try {
       const formData = new FormData();
       formData.append('file', normalizedFile, file.name);
-      
-      console.log('Conectando con el modelo:', model.apiUrl);
+
       const result = await this.http.post<any>(model.apiUrl, formData).toPromise();
-      console.log('Respuesta del modelo:', result);
 
       let maskCanvas: string | null = null;
       let overlayCanvas: string | null = null;
@@ -172,19 +263,93 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       });
 
       this.activeRecord = this.session.records.find(r => r.id === record.id) || null;
-      if (this.activeRecord) {
-        this.showClinicalAnalysis = true; // Auto-show results on finish
+      if (this.activeRecord && !this.isBatchMode) {
+        this.showClinicalAnalysis = true;
       }
     } catch (err: any) {
       const msg = err?.error?.detail || err?.message || 'Error al conectar con el modelo';
       this.session.updateRecord(record.id, { status: 'error', errorMsg: msg });
       this.activeRecord = this.session.records.find(r => r.id === record.id) || null;
+      if (this.isBatchMode) this.batchErrors++;
     }
 
-    this.isLoading = false;
-    this.cdr.detectChanges();
+    if (this.isBatchMode) {
+      this.batchProcessed++;
+      this.cdr.detectChanges();
+    } else {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Batch download: generate ZIP with all results + CSV summary
+  // ─────────────────────────────────────────────────────────────
+  async downloadAllResults() {
+    const doneRecords = this.records.filter(r => r.status === 'done');
+    if (doneRecords.length === 0) {
+      alert('No hay resultados procesados para descargar.');
+      return;
+    }
+
+    const zip = new JSZip();
+    const csvRows: string[] = [
+      'Archivo,Diagnóstico,Células Anormales (%),Células Normales (%),Confianza (%),Modelo'
+    ];
+
+    for (const record of doneRecords) {
+      // Overlay image
+      if (record.overlayCanvas) {
+        const overlayData = record.overlayCanvas.split(',')[1];
+        zip.file(`overlay_${record.fileName.replace(/\.[^/.]+$/, '')}.jpg`, overlayData, { base64: true });
+      }
+      // Mask image (only for segmentation)
+      if (record.maskCanvas && !record.isYolo) {
+        const maskData = record.maskCanvas.split(',')[1];
+        zip.file(`mask_${record.fileName.replace(/\.[^/.]+$/, '')}.jpg`, maskData, { base64: true });
+      }
+      // CSV row
+      const stats = record.clinicalStats;
+      if (stats) {
+        csvRows.push(
+          `"${record.fileName}","${stats.diagnosis}",` +
+          `${stats.abnormalPercentage.toFixed(2)},${stats.normalPercentage.toFixed(2)},` +
+          `${(stats.avgConfidence * 100).toFixed(1)},"${record.modelUsed}"`
+        );
+      }
+    }
+
+    zip.file('resumen.csv', csvRows.join('\n'));
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const baseName = this.batchZipName
+      ? this.batchZipName.replace(/\.zip$/i, '')
+      : 'resultados';
+    a.href = url;
+    a.download = `resultados_${baseName}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  get batchProgress(): number {
+    if (this.batchTotal === 0) return 0;
+    return Math.round((this.batchProcessed / this.batchTotal) * 100);
+  }
+
+  get batchSuccessCount(): number {
+    return this.batchProcessed - this.batchErrors;
+  }
+
+  closeBatchPanel() {
+    this.showBatchPanel = false;
+    this.isBatchMode = false;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Clinical stats
+  // ─────────────────────────────────────────────────────────────
   private calculateClinicalStats(mask: number[][] | null, detections: any[] | null, model: any): any {
     let abnormalPixels = 0;
     let normalPixels = 0;
@@ -203,13 +368,12 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     }
 
     if (detections) {
-      cancerousCellCount = detections.filter(d => 
+      cancerousCellCount = detections.filter(d =>
         (d.class_name || '').toLowerCase().includes('anormal') || d.class_id === 1
       ).length;
       const sumConf = detections.reduce((acc, d) => acc + (d.confidence || 0), 0);
       avgConfidence = detections.length > 0 ? sumConf / detections.length : 0;
     } else {
-      // For segmentation models, use model accuracy as confidence proxy
       avgConfidence = model.stats.accuracy;
     }
 
@@ -218,8 +382,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
     const hasCancer = abnormalPixels > 10 || cancerousCellCount > 0;
     const diagnosis = hasCancer ? 'ANORMAL' : 'NORMAL';
-    const diagnosisMsg = hasCancer 
-      ? 'Se han detectado indicios de celularidad anormal que sugieren presencia de lesiones o cáncer.' 
+    const diagnosisMsg = hasCancer
+      ? 'Se han detectado indicios de celularidad anormal que sugieren presencia de lesiones o cáncer.'
       : 'No se detectaron células anormales significativas en la muestra analizada.';
 
     return {
@@ -280,17 +444,15 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     if (this.activeRecord && this.activeRecord.status === 'done') {
       const model = this.session.selectedModel;
       if (model.type === 'segmentation') {
-        // Re-render overlay with/without labels
         const overlay = await this.renderOverlay(
-          this.activeRecord.originalUrl, 
-          this.activeRecord.maskData!, 
-          this.activeRecord.maskData!.length, 
+          this.activeRecord.originalUrl,
+          this.activeRecord.maskData!,
+          this.activeRecord.maskData!.length,
           this.activeRecord.maskData![0].length
         );
         this.session.updateRecord(this.activeRecord.id, { overlayCanvas: overlay });
         this.activeRecord = this.session.records.find(r => r.id === this.activeRecord!.id) || null;
       }
-      // YOLO already draws labels, we follow user request not to touch it
       this.cdr.detectChanges();
     }
   }
@@ -303,23 +465,35 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     });
   }
 
+  private getNormalizedBlob(file: File): Promise<Blob> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.95);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   /**
    * Reads the EXIF orientation tag from a JPEG file.
-   * Returns a value from 1–8 (1 = normal, no rotation needed).
    */
   private getExifOrientation(file: File): Promise<number> {
     return new Promise(res => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const view = new DataView(e.target!.result as ArrayBuffer);
-        // Check JPEG SOI marker
         if (view.getUint16(0, false) !== 0xFFD8) { res(1); return; }
         let offset = 2;
         while (offset < view.byteLength) {
           if (view.getUint16(offset, false) === 0xFFE1) {
-            // APP1 marker found
             const exifHeader = view.getUint32(offset + 4, false);
-            if (exifHeader !== 0x45786966) { res(1); return; } // 'Exif'
+            if (exifHeader !== 0x45786966) { res(1); return; }
             const little = view.getUint16(offset + 10, false) === 0x4949;
             const ifdOffset = view.getUint32(offset + 14, little);
             const tags = view.getUint16(offset + 10 + ifdOffset, little);
@@ -338,43 +512,6 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       };
       reader.onerror = () => res(1);
       reader.readAsArrayBuffer(file.slice(0, 65536));
-    });
-  }
-
-  /**
-   * Returns a corrected data URL that has EXIF rotation baked in,
-   * so canvas operations produce the same orientation the browser would show.
-   */
-  private async normalizeOrientation(file: File, dataUrl: string): Promise<string> {
-    const orientation = await this.getExifOrientation(file);
-    if (orientation <= 1) return dataUrl; // already correct
-
-    return new Promise(res => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        let w = img.naturalWidth;
-        let h = img.naturalHeight;
-
-        // Orientations 5–8 swap width and height
-        if (orientation >= 5) { canvas.width = h; canvas.height = w; }
-        else                   { canvas.width = w; canvas.height = h; }
-
-        // Apply the transform that undoes the EXIF rotation
-        switch (orientation) {
-          case 2: ctx.transform(-1, 0, 0,  1, w, 0); break;
-          case 3: ctx.transform(-1, 0, 0, -1, w, h); break;
-          case 4: ctx.transform( 1, 0, 0, -1, 0, h); break;
-          case 5: ctx.transform( 0, 1, 1,  0, 0, 0); break;
-          case 6: ctx.transform( 0, 1,-1,  0, h, 0); break;
-          case 7: ctx.transform( 0,-1,-1,  0, h, w); break;
-          case 8: ctx.transform( 0,-1, 1,  0, 0, w); break;
-        }
-        ctx.drawImage(img, 0, 0);
-        res(canvas.toDataURL('image/jpeg', 0.95));
-      };
-      img.src = dataUrl;
     });
   }
 
@@ -409,7 +546,6 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     return new Promise(res => {
       const img = new Image();
       img.onload = () => {
-        // Usar las dimensiones reales de la imagen, no las del modelo
         const imgW = img.naturalWidth;
         const imgH = img.naturalHeight;
 
@@ -417,12 +553,10 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         canvas.width = imgW; canvas.height = imgH;
         const ctx = canvas.getContext('2d')!;
 
-        // Dibujar imagen en su tamaño original
         ctx.drawImage(img, 0, 0, imgW, imgH);
 
         const model = this.session.selectedModel;
 
-        // Construir overlay escalando la máscara al tamaño real de la imagen
         const tmp = document.createElement('canvas');
         tmp.width = imgW; tmp.height = imgH;
         const tCtx = tmp.getContext('2d')!;
@@ -434,7 +568,6 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         ];
         for (let y = 0; y < imgH; y++) {
           for (let x = 0; x < imgW; x++) {
-            // Mapear coordenadas de la imagen a coordenadas de la máscara
             const maskY = Math.floor(y * h / imgH);
             const maskX = Math.floor(x * w / imgW);
             const cls = mask[maskY]?.[maskX];
@@ -451,32 +584,27 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         tCtx.putImageData(overlayData, 0, 0);
         ctx.drawImage(tmp, 0, 0);
 
-        // Draw probability labels if enabled for segmentation
         if (this.showLabels && model.id !== 'mmm-ucervix-yolo') {
           const clusters = this.findClusters(mask);
           const confidence = (model.stats.accuracy * 100).toFixed(1);
-          
+
           clusters.forEach(c => {
-            // Scale mask coordinates to image coordinates
             const x = c.minX * imgW / w;
             const y = c.minY * imgH / h;
             const bw = (c.maxX - c.minX + 1) * imgW / w;
             const className = c.cls === 1 ? 'Anormal' : 'Normal';
             const color = c.cls === 1 ? '#ef4444' : '#22c55e';
-            
+
             ctx.font = 'bold 20px Inter';
             const label = `${className} (${confidence}%)`;
             const textWidth = ctx.measureText(label).width;
-            
-            // Label box
+
             ctx.fillStyle = color;
             ctx.fillRect(x, y - 28, textWidth + 12, 28);
-            
-            // Text
+
             ctx.fillStyle = '#ffffff';
             ctx.fillText(label, x + 6, y - 8);
-            
-            // Optional: Draw subtle border around the blob's bounding box
+
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.strokeRect(x, y, bw, (c.maxY - c.minY + 1) * imgH / h);
@@ -501,7 +629,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         const ctx = canvas.getContext('2d')!;
 
         ctx.drawImage(img, 0, 0, imgW, imgH);
-        
+
         ctx.lineWidth = 4;
         ctx.font = 'bold 18px Arial';
 
@@ -510,13 +638,13 @@ export class SegmentationComponent implements OnInit, OnDestroy {
             const [x1, y1, x2, y2] = d.bbox_xyxy;
             const w = x2 - x1;
             const h = y2 - y1;
-            
-            let color = '#ff0000'; // rojo (anormal por defecto)
+
+            let color = '#ff0000';
             const className = (d.class_name || '').toLowerCase();
             if (className.includes('normal') && !className.includes('anormal')) {
-              color = '#00ff00'; // verde
+              color = '#00ff00';
             } else if (d.class_id === 2 && !className) {
-              color = '#00ff00'; // asumiendo 2 es normal
+              color = '#00ff00';
             }
 
             ctx.strokeStyle = color;
@@ -564,9 +692,16 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   clearHistory() {
     this.session.clearRecords();
     this.activeRecord = null;
+    this.isBatchMode = false;
+    this.isBatchDone = false;
+    this.showBatchPanel = false;
+    this.batchTotal = 0;
+    this.batchProcessed = 0;
+    this.batchErrors = 0;
+    this.batchZipName = '';
   }
 
   formatTime(d: Date): string {
     return new Date(d).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
   }
-}       
+}

@@ -121,6 +121,23 @@
   color: var(--text-muted);
 }
 
+.upload-zip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.75rem;
+  padding: 3px 10px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
 /* History Panel */
 .history-panel {
   background: var(--surface);
@@ -358,7 +375,21 @@
 .empty-hint {
   font-size: 0.875rem;
   color: var(--text-secondary);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.empty-divider {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 /* Clinical Analysis Panel */
@@ -544,4 +575,162 @@
 @keyframes slideInRight {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
+}
+
+/* ── Batch / ZIP Styles ────────────────────────────────────── */
+
+.batch-banner {
+  margin-bottom: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.batch-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+
+.batch-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.batch-zip-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.batch-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.batch-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.batch-errors {
+  color: var(--error);
+  font-weight: 700;
+}
+
+.batch-spinner {
+  flex-shrink: 0;
+}
+
+.batch-progress-bar {
+  height: 4px;
+  background: var(--surface-3);
+  position: relative;
+  overflow: hidden;
+}
+
+.batch-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #818cf8);
+  border-radius: 2px;
+  transition: width 0.4s ease-out;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 80px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-80px); }
+  to   { transform: translateX(80px); }
+}
+
+/* Done panel */
+.batch-done-panel {
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(99,102,241,0.08));
+  border: 1px solid rgba(34,197,94,0.35);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.batch-done-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.batch-done-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.batch-done-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.batch-done-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+}
+
+.batch-done-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.batch-done-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* History batch download shortcut */
+.history-batch-download {
+  padding: 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+/* Spinner variants */
+.spinner.small {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
 }

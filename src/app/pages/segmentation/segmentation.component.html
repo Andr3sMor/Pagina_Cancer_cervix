@@ -24,6 +24,70 @@
     </div>
   </div>
 
+  <!-- BATCH PROGRESS BANNER -->
+  <div class="batch-banner" *ngIf="isBatchMode && !isBatchDone">
+    <div class="batch-banner-header">
+      <div class="batch-banner-info">
+        <div class="batch-zip-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div>
+          <span class="batch-title" *ngIf="isExtractingZip">Extrayendo imágenes de {{ batchZipName }}...</span>
+          <span class="batch-title" *ngIf="!isExtractingZip">
+            Procesando lote: {{ batchProcessed }} / {{ batchTotal }} imágenes
+            <span class="batch-errors" *ngIf="batchErrors > 0"> · {{ batchErrors }} error(es)</span>
+          </span>
+          <span class="batch-subtitle" *ngIf="isExtractingZip">{{ zipExtractPct }}% descomprimido</span>
+          <span class="batch-subtitle" *ngIf="!isExtractingZip">
+            {{ batchSize }} imágenes en paralelo · {{ batchProgress }}% completado
+          </span>
+        </div>
+      </div>
+      <div class="batch-spinner">
+        <div class="spinner small"></div>
+      </div>
+    </div>
+    <div class="batch-progress-bar">
+      <div class="batch-progress-fill"
+           [style.width.%]="isExtractingZip ? zipExtractPct : batchProgress">
+      </div>
+    </div>
+  </div>
+
+  <!-- BATCH DONE PANEL -->
+  <div class="batch-done-panel" *ngIf="showBatchPanel && isBatchDone">
+    <div class="batch-done-inner">
+      <div class="batch-done-left">
+        <div class="batch-done-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div>
+          <p class="batch-done-title">
+            Lote completado: <strong>{{ batchSuccessCount }}</strong> imagen(es) procesadas
+            <span class="batch-errors" *ngIf="batchErrors > 0"> · {{ batchErrors }} error(es)</span>
+          </p>
+          <p class="batch-done-sub">{{ batchZipName }} · Modelo: {{ session.selectedModel.name }}</p>
+        </div>
+      </div>
+      <div class="batch-done-actions">
+        <button class="btn btn-primary" id="btn-download-all-zip" (click)="downloadAllResults()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar todo (ZIP + CSV)
+        </button>
+        <button class="btn btn-ghost" (click)="closeBatchPanel()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MAIN GRID -->
   <div class="main-grid">
 
@@ -33,14 +97,15 @@
       <!-- Upload zone -->
       <div class="upload-zone"
            [class.dragging]="isDragging"
-           [class.loading]="isLoading"
+           [class.loading]="isLoading && !isBatchMode"
            (click)="triggerFileInput()"
            (dragover)="onDragOver($event)"
            (dragleave)="onDragLeave()"
            (drop)="onDrop($event)">
-        <input #fileInput type="file" accept="image/jpeg,image/png,image/bmp,image/webp,image/tiff"
+        <input #fileInput type="file"
+               accept="image/jpeg,image/png,image/bmp,image/webp,image/tiff,application/zip,application/x-zip-compressed,.zip,.rar"
                style="display:none" (change)="onFileSelected($event)"/>
-        <div *ngIf="!isLoading" class="upload-content">
+        <div *ngIf="!isLoading || isBatchMode" class="upload-content">
           <div class="upload-icon">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -50,8 +115,15 @@
           </div>
           <p class="upload-title">Arrastra o haz clic</p>
           <p class="upload-hint">JPG · PNG · BMP · WEBP · TIFF</p>
+          <div class="upload-zip-badge">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            ZIP compatible
+          </div>
         </div>
-        <div *ngIf="isLoading" class="upload-loading">
+        <div *ngIf="isLoading && !isBatchMode" class="upload-loading">
           <div class="spinner"></div>
           <p>Procesando imagen...</p>
         </div>
@@ -84,10 +156,19 @@
                   }">{{ r.status }}</span>
                 <span style="color:var(--text-muted);font-size:0.75rem">{{ formatTime(r.timestamp) }}</span>
               </div>
-              <!-- Modelo usado en esta imagen específica -->
               <span style="color:var(--text-muted);font-size:0.7rem;margin-top:2px">{{ r.modelUsed }}</span>
             </div>
           </div>
+        </div>
+        <!-- Batch download shortcut inside history panel -->
+        <div class="history-batch-download" *ngIf="isBatchDone && batchSuccessCount > 0">
+          <button class="btn btn-primary" style="width:100%;font-size:0.8rem" (click)="downloadAllResults()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar lote ({{ batchSuccessCount }}) como ZIP
+          </button>
         </div>
       </div>
 
@@ -192,13 +273,13 @@
         </div>
 
         <!-- CLINICAL ANALYSIS PANEL (Overlay) -->
-        <div class="clinical-panel-overlay" *ngIf="showClinicalAnalysis && activeRecord.clinicalStats" [@fadeIn]>
+        <div class="clinical-panel-overlay" *ngIf="showClinicalAnalysis && activeRecord.clinicalStats">
           <div class="clinical-card">
             <div class="clinical-header">
               <h3>Análisis de Citopatología</h3>
               <button class="btn-close" (click)="showClinicalAnalysis = false">&times;</button>
             </div>
-            
+
             <div class="diagnosis-banner" [class.diagnosis-anormal]="activeRecord.clinicalStats.diagnosis === 'ANORMAL'">
               <div class="diagnosis-icon">
                 <svg *ngIf="activeRecord.clinicalStats.diagnosis === 'NORMAL'" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -247,7 +328,7 @@
             </div>
 
             <p class="diagnosis-msg">{{ activeRecord.clinicalStats.diagnosisMsg }}</p>
-            
+
             <div class="clinical-footer">
               <button class="btn btn-primary" style="width: 100%;" (click)="showClinicalAnalysis = false">Cerrar Informe</button>
             </div>
@@ -273,8 +354,18 @@
             </svg>
           </div>
           <p class="empty-title">Sin imagen seleccionada</p>
-          <p class="empty-hint">Carga una imagen para comenzar la segmentación</p>
-          <button class="btn btn-primary" (click)="triggerFileInput()">Cargar imagen</button>
+          <p class="empty-hint">Carga una imagen o un archivo ZIP para comenzar la segmentación</p>
+          <div class="empty-actions">
+            <button class="btn btn-primary" (click)="triggerFileInput()">Cargar imagen</button>
+            <span class="empty-divider">o</span>
+            <button class="btn btn-secondary" (click)="triggerFileInput()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Subir ZIP
+            </button>
+          </div>
         </div>
       </ng-template>
     </section>
