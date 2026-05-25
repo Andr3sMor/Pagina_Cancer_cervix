@@ -2,8 +2,7 @@ import { Injectable } from '@angular/core';
 import JSZip from 'jszip';
 
 export interface ZipExtractResult {
-  files: File[];
-  skipped: number;
+  entries: JSZip.JSZipObject[];
   zipName: string;
 }
 
@@ -33,17 +32,15 @@ export class ZipExtractorService {
   }
 
   /**
-   * Extrae todas las imágenes de un archivo ZIP.
-   * @param zipFile Archivo ZIP
-   * @param onProgress Callback de progreso (0-100)
+   * Extrae la lista de imágenes de un archivo ZIP sin cargarlas todas en memoria RAM de golpe.
+   * Devuelve los JSZipObject que se pueden descomprimir individualmente después.
    */
   async extractImages(
-    zipFile: File,
-    onProgress?: (pct: number) => void
+    zipFile: File
   ): Promise<ZipExtractResult> {
     const zip = new JSZip();
-    const arrayBuffer = await zipFile.arrayBuffer();
-    const loaded = await zip.loadAsync(arrayBuffer);
+    // Leer el archivo directamente minimiza el uso de RAM comparado con arrayBuffer()
+    const loaded = await zip.loadAsync(zipFile);
 
     const imageEntries: JSZip.JSZipObject[] = [];
 
@@ -58,30 +55,10 @@ export class ZipExtractorService {
       }
     });
 
-    const files: File[] = [];
-    let processed = 0;
-    const total = imageEntries.length;
-
-    for (const entry of imageEntries) {
-      try {
-        const blob = await entry.async('blob');
-        const fileName = entry.name.split('/').pop() || entry.name;
-        const ext = fileName.split('.').pop()?.toLowerCase() || 'jpg';
-        const mimeType = this.getMimeType(ext);
-        const file = new File([blob], fileName, { type: mimeType });
-        files.push(file);
-      } catch {
-        // Si falla la extracción de un archivo, se omite
-      }
-      processed++;
-      onProgress?.(Math.round((processed / total) * 100));
-    }
-
-    const skipped = total - files.length;
-    return { files, skipped, zipName: zipFile.name };
+    return { entries: imageEntries, zipName: zipFile.name };
   }
 
-  private getMimeType(ext: string): string {
+  getMimeType(ext: string): string {
     const map: Record<string, string> = {
       jpg: 'image/jpeg',
       jpeg: 'image/jpeg',

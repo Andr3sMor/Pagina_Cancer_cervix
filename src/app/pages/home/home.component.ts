@@ -11,8 +11,8 @@ import { RouterLink } from '@angular/router';
 })
 export class HomeComponent {
   examples = [
-    { src: 'assets/examples/Ejemplo1.png', title: 'Ejemplo 1' },
-    { src: 'assets/examples/Ejemplo2.png', title: 'Ejemplo 2' },
-    { src: 'assets/examples/Ejemplo3.png', title: 'Ejemplo 3' }
+    { src: 'images/Ejemplo1.png', title: 'Ejemplo 1' },
+    { src: 'images/Ejemplo2.png', title: 'Ejemplo 2' },
+    { src: 'images/Ejemplo3.png', title: 'Ejemplo 3' }
   ];
 }

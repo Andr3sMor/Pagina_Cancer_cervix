@@ -140,7 +140,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────────────────────────
   async handleZipFile(zipFile: File) {
     this.isExtractingZip = true;
-    this.zipExtractPct = 0;
+    this.zipExtractPct = 0; // Se puede usar para indicar que está cargando el índice
     this.isBatchMode = true;
     this.isBatchDone = false;
     this.showBatchPanel = false;
@@ -149,10 +149,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
     let extractResult;
     try {
-      extractResult = await this.zipExtractor.extractImages(zipFile, pct => {
-        this.zipExtractPct = pct;
-        this.cdr.detectChanges();
-      });
+      extractResult = await this.zipExtractor.extractImages(zipFile);
     } catch (err) {
       alert('Error al leer el ZIP. Verifica que el archivo no esté dañado.');
       this.isExtractingZip = false;
@@ -163,7 +160,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
     this.isExtractingZip = false;
 
-    if (extractResult.files.length === 0) {
+    if (extractResult.entries.length === 0) {
       alert(
         `El ZIP "${zipFile.name}" no contiene imágenes soportadas (JPG, PNG, BMP, WEBP, TIFF).`
       );
@@ -172,12 +169,12 @@ export class SegmentationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.batchTotal = extractResult.files.length;
+    this.batchTotal = extractResult.entries.length;
     this.batchProcessed = 0;
     this.batchErrors = 0;
     this.cdr.detectChanges();
 
-    await this.processBatch(extractResult.files);
+    await this.processBatch(extractResult.entries);
 
     this.isBatchDone = true;
     this.showBatchPanel = true;
@@ -188,12 +185,29 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────────────────────────
   // Process images in groups of `batchSize` concurrently
   // ─────────────────────────────────────────────────────────────
-  private async processBatch(images: File[]) {
+  private async processBatch(entries: JSZip.JSZipObject[]) {
     this.isLoading = true;
 
-    for (let i = 0; i < images.length; i += this.batchSize) {
-      const chunk = images.slice(i, i + this.batchSize);
-      await Promise.all(chunk.map(f => this.processSingleImage(f)));
+    for (let i = 0; i < entries.length; i += this.batchSize) {
+      const chunk = entries.slice(i, i + this.batchSize);
+      
+      // Extract ONLY the current chunk into memory (Blobs -> Files)
+      const filesChunk: File[] = [];
+      for (const entry of chunk) {
+        try {
+          const blob = await entry.async('blob');
+          const fileName = entry.name.split('/').pop() || entry.name;
+          const ext = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+          const mimeType = this.zipExtractor.getMimeType(ext);
+          filesChunk.push(new File([blob], fileName, { type: mimeType }));
+        } catch {
+          // If extraction fails for one file, skip it or mark as error
+          this.batchErrors++;
+          this.batchProcessed++;
+        }
+      }
+
+      await Promise.all(filesChunk.map(f => this.processSingleImage(f)));
     }
 
     this.isLoading = false;
