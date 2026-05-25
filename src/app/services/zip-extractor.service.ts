@@ -39,8 +39,8 @@ export class ZipExtractorService {
     zipFile: File
   ): Promise<ZipExtractResult> {
     const zip = new JSZip();
-    // Leer el archivo directamente minimiza el uso de RAM comparado con arrayBuffer()
-    const loaded = await zip.loadAsync(zipFile);
+    const arrayBuffer = await zipFile.arrayBuffer();
+    const loaded = await zip.loadAsync(arrayBuffer);
 
     const imageEntries: JSZip.JSZipObject[] = [];
 

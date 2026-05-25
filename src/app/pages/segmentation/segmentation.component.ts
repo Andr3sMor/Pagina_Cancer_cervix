@@ -151,7 +151,8 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     try {
       extractResult = await this.zipExtractor.extractImages(zipFile);
     } catch (err) {
-      alert('Error al leer el ZIP. Verifica que el archivo no esté dañado.');
+      console.error('JSZip Error:', err);
+      alert('Error al leer el ZIP. Verifica que el archivo no esté dañado. (Revisa la consola para más detalles)');
       this.isExtractingZip = false;
       this.isBatchMode = false;
       this.cdr.detectChanges();
