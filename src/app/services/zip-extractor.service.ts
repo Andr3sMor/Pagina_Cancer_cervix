@@ -39,7 +39,12 @@ export class ZipExtractorService {
     zipFile: File
   ): Promise<ZipExtractResult> {
     const zip = new JSZip();
-    const arrayBuffer = await zipFile.arrayBuffer();
+    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(zipFile);
+    });
     const loaded = await zip.loadAsync(arrayBuffer);
 
     const imageEntries: JSZip.JSZipObject[] = [];
