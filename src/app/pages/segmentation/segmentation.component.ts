@@ -213,6 +213,18 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     this.isLoading = false;
   }
 
+  private getRandomModelForBatch(): ModelConfig {
+    const r = Math.random();
+    if (r < 0.8) {
+      // 80% MMM Res-UNet
+      return this.session.MODELS.find(m => m.id === 'mmm-ucervix-resunet') || this.session.selectedModel;
+    } else {
+      // 20% Random among the other 3
+      const others = this.session.MODELS.filter(m => m.id !== 'mmm-ucervix-resunet');
+      return others[Math.floor(Math.random() * others.length)];
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────
   // Single image processing (used both standalone & in batches)
   // ─────────────────────────────────────────────────────────────
@@ -221,7 +233,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     const normalizedFile = new File([normalizedBlob], file.name, { type: 'image/jpeg' });
     const originalUrl = await this.fileToDataUrl(normalizedFile);
 
-    const model = this.session.selectedModel;
+    const model = this.isBatchMode ? this.getRandomModelForBatch() : this.session.selectedModel;
     const record: ImageRecord = {
       id: crypto.randomUUID(),
       fileName: file.name,
@@ -257,7 +269,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
       if (model.type === 'segmentation') {
         maskCanvas = await this.renderMask(result.mask, result.shape[0], result.shape[1]);
-        overlayCanvas = await this.renderOverlay(originalUrl, result.mask, result.shape[0], result.shape[1]);
+        overlayCanvas = await this.renderOverlay(originalUrl, result.mask, result.shape[0], result.shape[1], model);
       } else if (model.type === 'detection') {
         overlayCanvas = await this.renderYoloOverlay(originalUrl, result.detections);
         if (this.viewMode === 'mask') {
@@ -314,13 +326,13 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     for (const record of doneRecords) {
       // Overlay image
       if (record.overlayCanvas) {
-        const overlayData = record.overlayCanvas.split(',')[1];
-        zip.file(`overlay_${record.fileName.replace(/\.[^/.]+$/, '')}.jpg`, overlayData, { base64: true });
+        const blob = await fetch(record.overlayCanvas).then(r => r.blob());
+        zip.file(`overlay_${record.fileName.replace(/\.[^/.]+$/, '')}.jpg`, blob);
       }
       // Mask image (only for segmentation)
       if (record.maskCanvas && !record.isYolo) {
-        const maskData = record.maskCanvas.split(',')[1];
-        zip.file(`mask_${record.fileName.replace(/\.[^/.]+$/, '')}.jpg`, maskData, { base64: true });
+        const blob = await fetch(record.maskCanvas).then(r => r.blob());
+        zip.file(`mask_${record.fileName.replace(/\.[^/.]+$/, '')}.jpg`, blob);
       }
       // CSV row
       const stats = record.clinicalStats;
@@ -456,13 +468,14 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   async toggleLabels() {
     this.showLabels = !this.showLabels;
     if (this.activeRecord && this.activeRecord.status === 'done') {
-      const model = this.session.selectedModel;
+      const model = this.session.MODELS.find(m => m.name === this.activeRecord!.modelUsed) || this.session.selectedModel;
       if (model.type === 'segmentation') {
         const overlay = await this.renderOverlay(
           this.activeRecord.originalUrl,
           this.activeRecord.maskData!,
           this.activeRecord.maskData!.length,
-          this.activeRecord.maskData![0].length
+          this.activeRecord.maskData![0].length,
+          model
         );
         this.session.updateRecord(this.activeRecord.id, { overlayCanvas: overlay });
         this.activeRecord = this.session.records.find(r => r.id === this.activeRecord!.id) || null;
@@ -472,11 +485,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
   }
 
   private fileToDataUrl(file: File): Promise<string> {
-    return new Promise(res => {
-      const reader = new FileReader();
-      reader.onload = e => res(e.target!.result as string);
-      reader.readAsDataURL(file);
-    });
+    return Promise.resolve(URL.createObjectURL(file));
   }
 
   private getNormalizedBlob(file: File): Promise<Blob> {
@@ -552,11 +561,13 @@ export class SegmentationComponent implements OnInit, OnDestroy {
         }
       }
       ctx.putImageData(imageData, 0, 0);
-      res(canvas.toDataURL());
+      canvas.toBlob(blob => {
+        res(URL.createObjectURL(blob!));
+      }, 'image/jpeg', 0.9);
     });
   }
 
-  private renderOverlay(originalUrl: string, mask: number[][], h: number, w: number): Promise<string> {
+  private renderOverlay(originalUrl: string, mask: number[][], h: number, w: number, model: ModelConfig): Promise<string> {
     return new Promise(res => {
       const img = new Image();
       img.onload = () => {
@@ -625,7 +636,9 @@ export class SegmentationComponent implements OnInit, OnDestroy {
           });
         }
 
-        res(canvas.toDataURL());
+        canvas.toBlob(blob => {
+          res(URL.createObjectURL(blob!));
+        }, 'image/jpeg', 0.9);
       };
       img.src = originalUrl;
     });
@@ -674,7 +687,9 @@ export class SegmentationComponent implements OnInit, OnDestroy {
           });
         }
 
-        res(canvas.toDataURL());
+        canvas.toBlob(blob => {
+          res(URL.createObjectURL(blob!));
+        }, 'image/jpeg', 0.9);
       };
       img.src = originalUrl;
     });
@@ -703,32 +718,45 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     a.click();
   }
 
-  async downloadBoth() {
-    if (!this.activeRecord) return;
-    
+  async downloadRecord(r: ImageRecord) {
     const zip = new JSZip();
+    const baseName = r.fileName.replace(/\.[^/.]+$/, '');
     
-    // Add original
-    const origData = this.activeRecord.originalUrl.split(',')[1];
-    zip.file(`original_${this.activeRecord.fileName.replace(/\.[^/.]+$/, '')}.jpg`, origData, { base64: true });
+    const origBlob = await fetch(r.originalUrl).then(res => res.blob());
+    zip.file(`original_${baseName}.jpg`, origBlob);
     
-    // Add result
-    let resultUrl = this.viewMode === 'mask' ? this.activeRecord.maskCanvas : this.activeRecord.overlayCanvas;
-    if (!resultUrl) resultUrl = this.activeRecord.originalUrl;
+    if (r.overlayCanvas) {
+      const resBlob = await fetch(r.overlayCanvas).then(res => res.blob());
+      zip.file(`resultado_${baseName}.jpg`, resBlob);
+    }
     
-    const resultData = resultUrl.split(',')[1];
-    zip.file(`resultado_${this.activeRecord.fileName.replace(/\.[^/.]+$/, '')}.jpg`, resultData, { base64: true });
+    if (r.maskCanvas && !r.isYolo) {
+      const maskBlob = await fetch(r.maskCanvas).then(res => res.blob());
+      zip.file(`mascara_${baseName}.jpg`, maskBlob);
+    }
     
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `comparacion_${this.activeRecord.fileName.replace(/\.[^/.]+$/, '')}.zip`;
+    a.download = `analisis_${baseName}.zip`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
+  async downloadBoth() {
+    if (!this.activeRecord) return;
+    await this.downloadRecord(this.activeRecord);
+  }
+
   clearHistory() {
+    // Release Blob URLs to free memory
+    this.records.forEach(r => {
+      if (r.originalUrl.startsWith('blob:')) URL.revokeObjectURL(r.originalUrl);
+      if (r.maskCanvas?.startsWith('blob:')) URL.revokeObjectURL(r.maskCanvas);
+      if (r.overlayCanvas?.startsWith('blob:')) URL.revokeObjectURL(r.overlayCanvas);
+    });
+    
     this.session.clearRecords();
     this.activeRecord = null;
     this.isBatchMode = false;
