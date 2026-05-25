@@ -282,7 +282,7 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
       this.session.updateRecord(record.id, {
         status: 'done',
-        maskData: result.mask || null,
+        maskData: this.isBatchMode ? null : (result.mask || null),
         detections: result.detections || null,
         maskCanvas,
         overlayCanvas,
@@ -471,15 +471,19 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     if (this.activeRecord && this.activeRecord.status === 'done') {
       const model = this.session.MODELS.find(m => m.name === this.activeRecord!.modelUsed) || this.session.selectedModel;
       if (model.type === 'segmentation') {
-        const overlay = await this.renderOverlay(
-          this.activeRecord.originalUrl,
-          this.activeRecord.maskData!,
-          this.activeRecord.maskData!.length,
-          this.activeRecord.maskData![0].length,
-          model
-        );
-        this.session.updateRecord(this.activeRecord.id, { overlayCanvas: overlay });
-        this.activeRecord = this.session.records.find(r => r.id === this.activeRecord!.id) || null;
+        if (this.activeRecord.maskData) {
+          const overlay = await this.renderOverlay(
+            this.activeRecord.originalUrl,
+            this.activeRecord.maskData!,
+            this.activeRecord.maskData!.length,
+            this.activeRecord.maskData![0].length,
+            model
+          );
+          this.session.updateRecord(this.activeRecord.id, { overlayCanvas: overlay });
+          this.activeRecord = this.session.records.find(r => r.id === this.activeRecord!.id) || null;
+        } else {
+          alert('Las etiquetas interactivas no están disponibles en las imágenes procesadas por lotes (se descartan para evitar colapsar la memoria).');
+        }
       }
       this.cdr.detectChanges();
     }
