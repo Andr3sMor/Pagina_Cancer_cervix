@@ -91,21 +91,22 @@ export class SegmentationComponent implements OnInit, OnDestroy {
 
   triggerFileInput() { this.fileInputRef.nativeElement.click(); }
 
-  onFileSelected(event: Event) {
+  async onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files?.length) {
-      this.handleFile(input.files[0]);
-      input.value = '';
+      const file = input.files[0];
+      await this.handleFile(file);
+      input.value = ''; // Clean up ONLY after fully reading the file
     }
   }
 
   onDragOver(e: DragEvent) { e.preventDefault(); this.isDragging = true; }
   onDragLeave() { this.isDragging = false; }
-  onDrop(e: DragEvent) {
+  async onDrop(e: DragEvent) {
     e.preventDefault();
     this.isDragging = false;
     const file = e.dataTransfer?.files[0];
-    if (file) this.handleFile(file);
+    if (file) await this.handleFile(file);
   }
 
   // ─────────────────────────────────────────────────────────────
