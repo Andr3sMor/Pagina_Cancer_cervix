@@ -1,0 +1,129 @@
+<div class="home-page fade-in">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Análisis Citológico Asistido por IA</h1>
+      <p class="hero-subtitle">
+        MMM U-Cervix es una plataforma avanzada de visión por computadora diseñada para asistir en la detección temprana del cáncer cervical a través de la segmentación precisa de células en frotis de Papanicolaou.
+      </p>
+      <div class="hero-actions">
+        <a routerLink="/segmentation" class="btn btn-primary btn-large">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          Seguir a Segmentación
+        </a>
+        <a href="assets/paper.pdf" download class="btn btn-secondary btn-large">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <polyline points="9 15 12 18 15 15"></polyline>
+          </svg>
+          Descargar Paper
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Medical & Technical Info -->
+  <section class="info-section container">
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="card-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+          </svg>
+        </div>
+        <h2>El Cáncer Cervical</h2>
+        <p>
+          El cáncer cervical se origina en las células del epitelio del cuello uterino, principalmente en la zona de transformación. La infección por el <strong>Virus del Papiloma Humano (VPH)</strong> es la causa principal (responsable de más del 99% de los casos). Las variantes de alto riesgo (16 y 18) alteran los reguladores del ciclo celular p53 y pRb, provocando proliferación celular descontrolada. 
+        </p>
+        <p>
+          La prueba de Papanicolaou (PAP) es el método de referencia para su detección precoz, analizando la morfología nuclear bajo microscopía óptica.
+        </p>
+      </div>
+
+      <div class="info-card">
+        <div class="card-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </div>
+        <h2>El Sistema de Bethesda</h2>
+        <p>
+          Marco de nomenclatura estandarizado internacionalmente para reportar resultados de citología cervical. Categorías principales:
+        </p>
+        <ul class="bethesda-list">
+          <li><strong>NILM:</strong> Células dentro de límites normales.</li>
+          <li><strong>ASC-US / ASC-H:</strong> Células escamosas atípicas (significado indeterminado o sospecha de alto grado).</li>
+          <li><strong>L-SIL:</strong> Lesión intraepitelial de bajo grado (cambios por VPH y displasia leve).</li>
+          <li><strong>H-SIL:</strong> Lesión de alto grado (displasia moderada/severa, carcinoma in situ).</li>
+        </ul>
+        <p>
+          Nuestro sistema de IA automatizado utiliza esta clasificación categórica subyacente para entrenar modelos de alta precisión anatómica y patológica.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tutorial Section -->
+  <section class="tutorial-section container">
+    <div class="section-header">
+      <h2>¿Cómo usar la plataforma?</h2>
+      <p>Un flujo de trabajo optimizado para profesionales médicos</p>
+    </div>
+    
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <h3>Sube tus imágenes</h3>
+        <p>Carga imágenes individuales de microscopía o sube un archivo <strong>.ZIP</strong> para procesar lotes completos de pacientes simultáneamente.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <h3>Selecciona el Modelo</h3>
+        <p>Elige entre U-Net Base, Res-UNet, Spatial Dropout o YOLOv8 según necesites precisión segmentaria o detección en tiempo real.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <h3>Analiza Resultados</h3>
+        <p>Inspecciona las superposiciones visuales, visualiza las probabilidades y revisa las métricas de porcentaje celular y diagnóstico preliminar.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">4</div>
+        <h3>Descarga el Informe</h3>
+        <p>Exporta las imágenes segmentadas (original y máscara) individualmente, o descarga un ZIP completo con imágenes y un archivo CSV resumen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ground Truth Examples -->
+  <section class="examples-section container">
+    <div class="section-header">
+      <h2>Ejemplos de Segmentación (Ground Truth)</h2>
+      <p>Muestras procesadas demostrando la detección de anomalías citológicas.</p>
+    </div>
+
+    <div class="examples-grid">
+      <div class="example-card" *ngFor="let ex of examples">
+        <div class="img-wrapper">
+          <img [src]="ex.src" [alt]="ex.title" loading="lazy">
+        </div>
+        <div class="example-caption">{{ ex.title }}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer CTA -->
+  <section class="cta-section">
+    <h2>Prueba MMM U-Cervix Ahora</h2>
+    <p>Inicia tu primer análisis citológico asistido por inteligencia artificial de inmediato.</p>
+    <a routerLink="/segmentation" class="btn btn-primary btn-large mt-4">
+      Ir al Panel de Segmentación
+    </a>
+  </section>
+</div>

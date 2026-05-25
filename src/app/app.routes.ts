@@ -1,7 +1,11 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'segmentation', pathMatch: 'full' },
+  {
+    path: '',
+    loadComponent: () =>
+      import('./pages/home/home.component').then(m => m.HomeComponent)
+  },
   {
     path: 'segmentation',
     loadComponent: () =>
@@ -12,5 +16,5 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/statistics/statistics.component').then(m => m.StatisticsComponent)
   },
-  { path: '**', redirectTo: 'segmentation' }
+  { path: '**', redirectTo: '' }
 ];

@@ -689,6 +689,31 @@ export class SegmentationComponent implements OnInit, OnDestroy {
     a.click();
   }
 
+  async downloadBoth() {
+    if (!this.activeRecord) return;
+    
+    const zip = new JSZip();
+    
+    // Add original
+    const origData = this.activeRecord.originalUrl.split(',')[1];
+    zip.file(`original_${this.activeRecord.fileName.replace(/\.[^/.]+$/, '')}.jpg`, origData, { base64: true });
+    
+    // Add result
+    let resultUrl = this.viewMode === 'mask' ? this.activeRecord.maskCanvas : this.activeRecord.overlayCanvas;
+    if (!resultUrl) resultUrl = this.activeRecord.originalUrl;
+    
+    const resultData = resultUrl.split(',')[1];
+    zip.file(`resultado_${this.activeRecord.fileName.replace(/\.[^/.]+$/, '')}.jpg`, resultData, { base64: true });
+    
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comparacion_${this.activeRecord.fileName.replace(/\.[^/.]+$/, '')}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   clearHistory() {
     this.session.clearRecords();
     this.activeRecord = null;
